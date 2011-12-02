@@ -32,4 +32,5 @@ server : server M2M = 209.141.62.44
 name   : nama dari client ini,harus unik
 topic  : room/topic/channel. bebas.
 		tapi subscriber dan publisher harus di topic yg sama untuk berkomunikasi
+		saat ini room yg saya pakai adalah : teknobridges
 message : pesan yg ingin dikirim oleh publisher
