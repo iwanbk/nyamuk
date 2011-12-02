@@ -1,0 +1,35 @@
+Nyamuk
+--------
+M2M software based on mosquitto
+
+--------------
+Test Client
+-------------
+Library python mosquitto adalah wrapper dari library C mosquitto,
+jadi kita perlu menginstall library mosquitto client di komputer client.
+
+Cara mudah : install seluruh mosquitto
+----------
+wget -c http://mosquitto.org/files/source/mosquitto-0.14.2.tar.gz
+tar zxf mosquitto-0.14.2.tar.gz
+cd mosquitto-0.14.2
+make
+sudo make install
+
+subscriber client
+----------------
+Client yang menerima message
+./test/submq.py
+
+publisher client
+----------------
+Client yang menerima message
+./tes/pubmq.py
+
+keterangan opsi program
+---------------------
+server : server M2M = 209.141.62.44
+name   : nama dari client ini,harus unik
+topic  : room/topic/channel. bebas.
+		tapi subscriber dan publisher harus di topic yg sama untuk berkomunikasi
+message : pesan yg ingin dikirim oleh publisher
