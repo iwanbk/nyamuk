@@ -1,10 +1,22 @@
+=======================================
 Nyamuk
---------
+=======================================
 M2M software based on mosquitto
 
---------------
-Test Client
--------------
+
+---------------------------------------
+C Test client
+---------------------------------------
+Test Client dalam bahasa C ada di direktori client di source mosquitto
+Contoh :
+./mosquitto_pub -d -h server -m message -t topic
+
+Lihat bagian bawah untuk keterangan opsi program
+
+
+--------------------------------------
+Python Test Client
+---------------------------------------
 Library python mosquitto adalah wrapper dari library C mosquitto,
 jadi kita perlu menginstall library mosquitto client di komputer client.
 
@@ -26,8 +38,10 @@ publisher client
 Client yang menerima message
 ./tes/pubmq.py
 
-keterangan opsi program
----------------------
+
+--------------------------
+Keterangan Opsi Program
+---------------------------
 server : server M2M = 209.141.62.44
 name   : nama dari client ini,harus unik
 topic  : room/topic/channel. bebas.
