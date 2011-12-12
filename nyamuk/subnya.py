@@ -24,7 +24,8 @@ def start_nyamuk(server, name, topic):
         print "Can't connect"
         sys.exit(-1)
     
-    index = 0
+    #index = 0
+    #rc = ny.publish(topic, "hahah")
     while rc == MV.ERR_SUCCESS:
         rc = ny.loop()
         #index += 1
