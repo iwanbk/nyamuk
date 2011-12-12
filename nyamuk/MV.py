@@ -40,6 +40,8 @@ class MV:
     CMD_CONNACK = 0x20
     CMD_PUBLISH = 0x30
     CMD_PUBACK = 0x40
+    CMD_PINGREQ = 0xC0
+    CMD_PINGRESP = 0xD0
     
     #NET ERROR STATUS
     NET_EAGAIN = 0

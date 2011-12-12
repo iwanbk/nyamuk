@@ -10,3 +10,7 @@ def read(sock, count):
     str = sock.recv(count)
     ba = bytearray(str)
     return len(ba),ba, None
+
+def write(sock, payload):
+    len = sock.send(payload)
+    return None, len

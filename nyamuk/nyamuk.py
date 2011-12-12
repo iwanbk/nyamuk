@@ -70,7 +70,7 @@ class Nyamuk:
     def __del__(self):
         pass
     
-    def connect(self, hostname = "localhost", port = 1883, keepalive = 60, clean_session = True):
+    def connect(self, hostname = "localhost", port = 1883, keepalive = MV.KEEPALIVE_VAL, clean_session = True):
         
         self.hostnamne = hostname
         self.port = port
@@ -111,9 +111,12 @@ class Nyamuk:
             return MV.ERR_SUCCESS
         
     def packet_write(self):
-        for pkt in self.out_packet:
-            #pkt.dump()
-            write_length = self.sock.send(pkt.payload)
+        if self.sock == MV.INVALID_SOCKET:
+            return MV.ERR_NO_CONN
+        
+        while len(self.out_packet) > 0:
+            pkt = self.out_packet[0]
+            status, write_length = nyamuk_net.write(self.sock, pkt.payload)
             if write_length > 0:
                 pkt.to_process -= write_length
                 pkt.pos += write_length
@@ -123,7 +126,25 @@ class Nyamuk:
                 else:
                     print "[packet_write]all packet sent, next packcet"
             else:
-                return MV.ERR_SUCCESS
+                if status == MV.NET_EAGAIN or status == MV.NET_EWOULDBLOCK:
+                    return MV.ERR_SUCCESS
+                elif status == MV.NET_COMPAT_ECONNRESET:
+                    return MV.ERR_CONN_LOST
+                else:
+                    return MV.ERR_UNKNOWN
+            
+            if pkt.command & 0xF6 == MV.CMD_PUBLISH and self.on_publish is not None:
+                self.in_callback = True
+                self.on_publish(pkt.mid)
+                self.in_callback = False
+            
+            #next
+            del self.out_packet[0]
+            
+            #free data (unnecessary)
+            
+            self.last_msg_out = time.time()
+            
         
         return MV.ERR_SUCCESS
     
@@ -228,6 +249,8 @@ class Nyamuk:
         
         rc = self.packet_handle()
         
+        self.in_packet.packet_cleanup()
+        
         self.last_msg_in = time.time()
         
         return rc
@@ -235,18 +258,35 @@ class Nyamuk:
     def loop_write(self, wlist):
         pass
     def loop_misc(self):
-        pass
+        print "loop-misc"
+        self.check_keepalive()
+        if self.last_retry_check + 1  < time.time():
+            pass
+        return MV.ERR_SUCCESS
     
+    def check_keepalive(self):
+        #print "time - last_msg_out = ", time.time() - self.last_msg_out
+        #print "keepalive = ", self.keep_alive
+        if self.sock != MV.INVALID_SOCKET and time.time() - self.last_msg_out >= self.keep_alive:
+            if self.state == MV.CS_CONNECTED:
+                self.send_pingreq()
+            else:
+                self.socket_close()
+                
     def socket_close(self):
-        pass
+        if self.sock != MV.INVALID_SOCKET:
+            self.sock.close()
+        self.sock = MV.INVALID_SOCKET
     
     def packet_handle(self):
         cmd = self.in_packet.command & 0xF0
         
         if cmd == MV.CMD_CONNACK:
             return self.handle_connack()
+        elif cmd == MV.CMD_PINGRESP:
+            return self.handle_pingresp()
         else:
-            print "Unknown protocol"
+            print "Unknown protocol. Cmd = ", cmd
             return MV.ERR_PROTOCOL
     
     def handle_connack(self):
@@ -275,3 +315,23 @@ class Nyamuk:
             return MV.ERR_CONN_REFUSED
         else:
             return MV.ERR_PROTOCOL
+    
+    def handle_pingresp(self):
+        print "Received PINGRESP"
+        return MV.ERR_SUCCESS
+    
+    def send_pingreq(self):
+        print "SEND PINGREQ"
+        self.send_simple_command(MV.CMD_PINGREQ)
+    
+    def send_simple_command(self, cmd):
+        pkt = MqttPkt()
+        
+        pkt.command = cmd
+        pkt.remaining_length = 0
+        
+        rc = pkt.alloc()
+        if rc != MV.ERR_SUCCESS:
+            return rc
+        
+        self.packet_queue(pkt)
