@@ -95,6 +95,33 @@ class Nyamuk:
         print "Enqueueu packet"
         return self.packet_queue(pkt)
     
+    def publish(self, topic, payload = None, qos = 0, retain = False):
+        print "PUBLISHING"
+        payloadlen = len(payload)
+        if topic is None or qos < 0 or qos > 2:
+            print "PUBLISH:err inval"
+            return MV.ERR_INVAL
+        
+        if payloadlen > 268435455:
+            print "PUBLISH:err payload"
+            return MV.ERR_PAYLOAD_SIZE
+        
+        #wildcard check : TODO
+        
+        mid = self.mid_generate()
+        
+        if qos == 0:
+            return self.send_publish(mid, topic, payload, qos, retain, False)
+        else:
+            print "Unsupport QoS=", qos
+        pass
+    
+    def mid_generate(self):
+        self.last_mid += 1
+        if self.last_mid == 0:
+            self.last_mid += 1
+        return self.last_mid
+    
     def packet_queue(self, pkt):
         '''
         Enqueue packet to out_packet queue
@@ -320,6 +347,39 @@ class Nyamuk:
         print "Received PINGRESP"
         return MV.ERR_SUCCESS
     
+    def send_publish(self, mid, topic, payload, qos, retain, dup):
+        if self.sock == MV.INVALID_SOCKET:
+            return MV.ERR_NO_CONN
+        return self.send_real_publish(mid, topic, payload, qos, retain, dup)
+    
+    def send_real_publish(self, mid, topic, payload, qos, retain, dup):
+        pkt = MqttPkt()
+        payloadlen = len(payload)
+        packetlen = 2 + len(topic) + payloadlen
+        
+        if qos > 0:
+            packetlen += 2
+        
+        pkt.mid = mid
+        pkt.command = MV.CMD_PUBLISH | ((dup & 0x1) << 3) | (qos << 1) | retain
+        pkt.remaining_length = packetlen
+        
+        rc = pkt.alloc()
+        if rc != MV.ERR_SUCCESS:
+            return rc
+        
+        #variable header : Topic String
+        pkt.write_string(topic, len(topic))
+        
+        if qos > 0:
+            pkt.write_uint16(mid)
+        
+        #payloadlen
+        if payloadlen > 0:
+            pkt.write_bytes(payload, payloadlen)
+        
+        return self.packet_queue(pkt)
+        
     def send_pingreq(self):
         print "SEND PINGREQ"
         self.send_simple_command(MV.CMD_PINGREQ)
