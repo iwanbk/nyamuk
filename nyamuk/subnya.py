@@ -3,10 +3,13 @@ import nyamuk
 from MV import MV
 
 def on_connect(rc):
+    print "---OnConnectCallback---"
     if rc == 0:
         print "Connected"
     else:
         print "Connect failed"
+    
+    print "---OnConnectCallback- end--"
         
 def on_message(msg):
     print "--- message --"
@@ -25,7 +28,7 @@ def start_nyamuk(server, name, topic):
         sys.exit(-1)
     
     while rc == MV.ERR_SUCCESS:
-        pass
+        rc = ny.loop()
     
 if __name__ == '__main__':
     if len(sys.argv) != 4:
