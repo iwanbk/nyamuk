@@ -40,8 +40,16 @@ class MV:
     CMD_CONNACK = 0x20
     CMD_PUBLISH = 0x30
     CMD_PUBACK = 0x40
+    CMD_PUBREC = 0x50
+    CMD_PUBREL = 0x60
+    CMD_PUBCOMP = 0x70
+    CMD_SUBSCRIBE = 0x80
+    CMD_SUBACK = 0x90
+    CMD_UNSUBSCRIBE = 0xA0
+    CMD_UNSUBACK = 0xB0
     CMD_PINGREQ = 0xC0
     CMD_PINGRESP = 0xD0
+    CMD_DISCONNECT = 0xE0
     
     #NET ERROR STATUS
     NET_EAGAIN = 0
@@ -49,6 +57,19 @@ class MV:
     NET_COMPAT_ECONNRESET = 2
     #OTHER
     MESSAGE_RETRY = 20
+    
+    #DIRECTION
+    DIRECTION_NONE = -1
+    DIRECTION_IN = 0
+    DIRECTION_OUT = 1
+    
+    #MESSAGE STATE
+    MS_INVALID = 0
+    MS_WAIT_PUBACK = 1
+    MS_WAIT_PUBREC = 2
+    MS_WAIT_PUBREL = 3
+    MS_WAIT_PUBCOMP = 4
+    
     
     def __init__(self):
         pass

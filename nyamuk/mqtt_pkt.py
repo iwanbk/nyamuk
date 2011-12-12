@@ -188,6 +188,47 @@ class MqttPkt:
         
         return MV.ERR_SUCCESS, byte
     
-
+    def read_uint16(self):
+        if self.pos + 2 > self.remaining_length:
+            return MV.ERR_PROTOCOL
+        msb = self.payload[self.pos]
+        self.pos += 1
+        lsb = self.payload[self.pos]
+        self.pos += 1
+        
+        word = (msb << 8) + lsb
+        
+        return MV.ERR_SUCCESS, word
+    
+    def read_bytes(self, count):
+        if self.pos + count > self.remaining_length:
+            return MV.ERR_PROTOCOL, None
+        
+        ba = bytearray(count)
+        for x in range(0, count):
+            ba[x] = self.payload[self.pos]
+            self.pos += 1
+        
+        return MV.ERR_SUCCESS, ba
+    
+    def read_string(self):
+        rc, len = self.read_uint16()
+        
+        if rc != MV.ERR_SUCCESS:
+            return rc, None
+        
+        if self.pos + len > self.remaining_length:
+            return MV.ERR_PROTOCOL, None
+        
+        ba = bytearray(len)
+        if ba is None:
+            return MV.ERR_NO_MEM, None
+        
+        for x in range(0, len):
+            ba[x] = self.payload[self.pos]
+            self.pos += 1
+        
+        return MV.ERR_SUCCESS, ba 
+        
 def fixhdr_build(qos =0, retain = 0, dup = 0):
     pass

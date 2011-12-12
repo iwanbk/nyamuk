@@ -23,7 +23,7 @@ def publish_msg(server, name, topic, msg):
     
     c.connect(server)
     
-    c.publish(topic,msg, 2)
+    c.publish(topic, msg, 0)
     
     while c.loop() == 0:
         pass

@@ -6,10 +6,12 @@ Python Mosquitto Client Library
 import socket
 import select
 import time
+import sys
 
 from mqtt_pkt import MqttPkt
 from MV import MV
 import nyamuk_net
+from nyamuk_msg import NyamukMsg, NyamukMsgAll
 
 MQTTCONNECT = 16# 1 << 4
 class Nyamuk:
@@ -116,6 +118,33 @@ class Nyamuk:
             print "Unsupport QoS=", qos
         pass
     
+    def subscribe(self, mid, topic, qos):
+        if self.sock == MV.INVALID_SOCKET:
+            return MV.ERR_NO_CONN
+        return self.send_subscribe(mid, False, topic, qos)
+        
+    def send_subscribe(self, mid, dup, topic, qos):
+        pkt = MqttPkt()
+        
+        pktlen = 2 + 2 + len(topic) + 1
+        pkt.command = MV.CMD_SUBSCRIBE | (dup << 3) | (1 << 1)
+        pkt.remaining_length = pktlen
+        
+        rc = pkt.alloc()
+        if rc != MV.ERR_SUCCESS:
+            return rc
+        
+        #variable header
+        local_mid = self.mid_generate()
+        mid = local_mid
+        pkt.write_uint16(local_mid)
+        
+        #payload
+        pkt.write_string(topic, len(topic))
+        pkt.write_byte(qos)
+        
+        return self.packet_queue(pkt)
+        
     def mid_generate(self):
         self.last_mid += 1
         if self.last_mid == 0:
@@ -285,7 +314,6 @@ class Nyamuk:
     def loop_write(self, wlist):
         pass
     def loop_misc(self):
-        print "loop-misc"
         self.check_keepalive()
         if self.last_retry_check + 1  < time.time():
             pass
@@ -312,6 +340,33 @@ class Nyamuk:
             return self.handle_connack()
         elif cmd == MV.CMD_PINGRESP:
             return self.handle_pingresp()
+        elif cmd == MV.CMD_PUBLISH:
+            return self.handle_publish()
+        elif cmd == MV.CMD_PUBACK:
+            print "Received PUBACK"
+            sys.exit(-1)
+        elif cmd == MV.CMD_PUBREC:
+            print "Received PUBREC"
+            sys.exit(-1)
+        elif cmd == MV.CMD_PUBREL:
+            print "Received PUBREL"
+            sys.exit(-1)
+        elif cmd == MV.CMD_PUBCOMP:
+            print "Received PUBCOMP"
+            sys.exit(-1)
+        elif cmd == MV.CMD_SUBSCRIBE:
+            print "Received SUBSCRIBE"
+            sys.exit(-1)
+        elif cmd == MV.CMD_SUBACK:
+            print "Received SUBACK"
+            return self.handle_suback()
+            
+        elif cmd == MV.CMD_UNSUBSCRIBE:
+            print "Received UNSUBSCRIBE"
+            sys.exit(-1)
+        elif cmd == MV.CMD_UNSUBACK:
+            print "Received UNSUBACK"
+            sys.exit(-1)
         else:
             print "Unknown protocol. Cmd = ", cmd
             return MV.ERR_PROTOCOL
@@ -330,7 +385,7 @@ class Nyamuk:
         
         if self.on_connect is not None:
             self.in_callback = True
-            self.on_connect(result)
+            self.on_connect(result, self)
             self.in_callback = False
         
         if result == 0:
@@ -347,6 +402,94 @@ class Nyamuk:
         print "Received PINGRESP"
         return MV.ERR_SUCCESS
     
+    def handle_suback(self):
+        print "Received SUBACK"
+        
+        rc, mid = self.in_packet.read_uint16()
+        
+        if rc != MV.ERR_SUCCESS:
+            return rc
+        
+        qos_count = self.in_packet.remaining_length - self.in_packet.pos
+        granted_qos = bytearray(qos_count)
+        
+        if granted_qos is None:
+            return MV.ERR_NO_MEM
+        
+        i = 0
+        while self.in_packet.pos < self.in_packet.remaining_length:
+            rc,byte = self.in_packet.read_byte()
+            
+            if rc != MV.ERR_SUCCESS:
+                granted_qos = None
+                return rc
+            
+            granted_qos[i] = byte
+            
+            i += 1
+        
+        if self.on_subscribe is not None:
+            self.in_callback = True
+            #self.on_subscribe(self, mid, qos_count, granted_qos)
+            self.on_subscribe(self, mid, granted_qos)
+            self.in_callback = False
+        
+        granted_qos = None
+        
+        return MV.ERR_SUCCESS
+    
+    def handle_publish(self):
+        print "Received PUBLISH"
+        
+        header = self.in_packet.command
+        
+        message = NyamukMsgAll()
+        message.direction = MV.DIRECTION_IN
+        message.dup = (header & 0x08) >> 3
+        message.msg.qos = (header & 0x06) >> 1
+        message.msg.retain = (header & 0x01)
+        
+        rc, ba = self.in_packet.read_string()
+        message.msg.topic = ba.decode()
+        
+        if rc != MV.ERR_SUCCESS:
+            return rc
+        
+        #fix_sub_topic TODO
+        
+        if message.msg.qos > 0:
+            rc, word = self.in_packet.read_uint16()
+            message.msg.mid = word
+            if rc != MV.ERR_SUCCESS:
+                return rc
+        
+        message.msg.payloadlen = self.in_packet.remaining_length - self.in_packet.pos
+        
+        if message.msg.payloadlen > 0:
+            rc, message.msg.payload = self.in_packet.read_bytes(message.msg.payloadlen)
+            if rc != MV.ERR_SUCCESS:
+                return rc
+        
+        print "Receied PUBLISH(d=",message.dup,",qos=",message.msg.qos,",retain=",message.msg.retain
+        print "\tmid=",message.msg.mid,",topic=",message.msg.topic,",payloadlen=",message.msg.payloadlen
+        
+        message.timestamp = time.time()
+        
+        qos = message.msg.qos
+        if qos == 0:
+            if self.on_message is not None:
+                self.in_callback = True
+                self.on_message(self, message.msg)
+                self.in_callback = False
+            return MV.ERR_SUCCESS
+        elif qos == 1 or qos == 2:
+            print "handle_publish. Unsupported QoS = 1 or QoS = 2"
+            sys.exit(-1)
+        else:
+            return MV.ERR_PROTOCOL
+        
+        
+        return MV.ERR_SUCCESS
     def send_publish(self, mid, topic, payload, qos, retain, dup):
         if self.sock == MV.INVALID_SOCKET:
             return MV.ERR_NO_CONN

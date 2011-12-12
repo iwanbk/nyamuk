@@ -5,7 +5,7 @@ import sys
 import nyamuk
 from MV import MV
 
-def on_connect(rc):
+def on_connect(rc, nyamuk):
     if rc == 0:
         print "on_connect callback : success"
     else:
@@ -22,7 +22,7 @@ def start_nyamuk(server, name, topic, payload):
     ny.on_message = on_message
     ny.on_connect = on_connect
     
-    rc = ny.connect(server, keepalive = 10)
+    rc = ny.connect(server, keepalive = 60)
     if rc != MV.ERR_SUCCESS:
         print "Can't connect"
         sys.exit(-1)
