@@ -5,9 +5,11 @@ Python Mosquitto Client Library
 '''
 import socket
 import select
+import time
 
 from mqtt_pkt import MqttPkt
 from MV import MV
+import nyamuk_net
 
 MQTTCONNECT = 16# 1 << 4
 class Nyamuk:
@@ -29,18 +31,19 @@ class Nyamuk:
         self.keep_alive = MV.KEEPALIVE_VAL
         self.clean_session = False
         self.state = MV.CS_NEW
-        self.last_msg_in = None
-        self.last_msg_out = None
-        self.last_mid = -1
+        self.last_msg_in = time.time()
+        self.last_msg_out = time.time()
+        self.last_mid = 0
         
         #output packet queue
         self.out_packet = []
         
         #input packet queue
-        self.in_packet = []
+        self.in_packet = MqttPkt()
+        self.in_packet.packet_cleanup()
         
         #networking
-        self.sock = -1
+        self.sock = MV.INVALID_SOCKET
         
         
         self.in_callback = False
@@ -48,6 +51,8 @@ class Nyamuk:
         self.last_retry_check = 0
         self.messages = None
         self.will = None
+        
+        #LOGGING:TODO
         self.log_priorities = -1
         self.log_destinations = -1
         
@@ -81,9 +86,8 @@ class Nyamuk:
         #create socket
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         
-        print "Connecting....."
+        print "Connecting to server ...."
         ret = self.sock.connect((hostname, port))
-        print "Connected.....to host"
         
         #set to nonblock
         self.sock.setblocking(0)
@@ -123,23 +127,151 @@ class Nyamuk:
         
         return MV.ERR_SUCCESS
     
-    def loop(self, timeout):
+    def loop(self, timeout = 1):
         rlist = [self.sock]
         wlist = []
         if len(self.out_packet) > 0:
             wlist.append(self.sock)
         
-        to_read, to_write, in_error = select.select(rlist, wlist, None)
+        to_read, to_write, in_error = select.select(rlist, wlist, [], timeout)
         
-        self.loop_read(to_read)
-        self.loop_write(to_write)
+        if len(to_read) > 0:
+            rc = self.loop_read(to_read)
+            if rc != MV.ERR_SUCCESS:
+                self.socket_close()
+                if self.state == MV.CS_DISCONNECTING:
+                    rc = MV.ERR_SUCCESS
+                    
+                if self.on_disconnect is not None:
+                    self.in_callback = True
+                    self.on_disconnect()
+                    self.in_callback = False
+                
+                return rc
+        
+        if len(to_write) > 0:
+            self.loop_write(to_write)
+            
         self.loop_misc()
         
         return MV.ERR_SUCCESS
     
     def loop_read(self, rlist):
-        pass
+        '''
+        read loop
+        '''
+        
+        if self.sock == MV.INVALID_SOCKET:
+            return MV.ERR_NO_CONN
+        
+        if self.in_packet.command == 0:
+            readlen, ba,status = nyamuk_net.read(self.sock, 1)
+            byte = ba[0]
+            if readlen == 1:
+                self.in_packet.command = byte
+            else:
+                if readlen == 0:
+                    return MV.ERR_CONN_LOST
+                if status == MV.NET_EAGAIN or status == MV.NET_EWOULDBLOCK:
+                    return MV.ERR_SUCCESS
+                else:
+                    if status == MV.NET_COMPAT_ECONNRESET:
+                        return MV.ERR_CONN_LOST
+                    else:
+                        return MV.ERR_UNKNOWN
+                
+        if self.in_packet.have_remaining == False:
+            loop_flag = True
+            while loop_flag == True:
+                readlen, ba,status = nyamuk_net.read(self.sock, 1)
+                byte = ba[0]
+                if readlen == 1:
+                    self.in_packet.remaining_count += 1
+                    if self.in_packet.remaining_count > 4:
+                        return MV.ERR_PROTOCOL
+                    
+                    self.in_packet.remaining_length += (byte & 127) * self.in_packet.remaining_mult
+                    self.in_packet.remaining_mult *= 128
+                else:
+                    if readlen == 0:
+                        return MV.ERR_CONN_LOST
+                
+                if (byte & 128) == 0:
+                    loop_flag = False
+            
+            if self.in_packet.remaining_length > 0:
+                self.in_packet.payload = bytearray(self.in_packet.remaining_length)
+                if self.in_packet.payload is None:
+                    return MV.ERR_NO_MEM
+                self.in_packet.to_process = self.in_packet.remaining_length
+            
+            self.in_packet.have_remaining = True
+            
+        if self.in_packet.to_process > 0:
+            readlen, ba, status = nyamuk_net.read(self.sock, self.in_packet.to_process)
+            if readlen > 0:
+                for x in range(0, readlen):
+                    self.in_packet.payload[self.in_packet.pos] = ba[x]
+                    self.in_packet.pos += 1
+                    self.in_packet.to_process -= 1
+            else:
+                if status == MV.NET_EAGAIN or status == MV.NET_EWOULDBLOCK:
+                    return MV.ERR_SUCCESS
+                else:
+                    if status == MV.NET_COMPAT_ECONNRESET:
+                        return MV.ERR_CONN_LOST
+                    else:
+                        return MV.ERR_UNKNOWN
+        
+        #all data for this packet is read
+        self.in_packet.pos = 0
+        
+        rc = self.packet_handle()
+        
+        self.last_msg_in = time.time()
+        
+        return rc
+                
     def loop_write(self, wlist):
         pass
     def loop_misc(self):
         pass
+    
+    def socket_close(self):
+        pass
+    
+    def packet_handle(self):
+        cmd = self.in_packet.command & 0xF0
+        
+        if cmd == MV.CMD_CONNACK:
+            return self.handle_connack()
+        else:
+            print "Unknown protocol"
+            return MV.ERR_PROTOCOL
+    
+    def handle_connack(self):
+        print "Received CONNACK"
+        rc, byte = self.in_packet.read_byte()
+        if rc != MV.ERR_SUCCESS:
+            print "faul"
+            return rc
+        
+        rc, result = self.in_packet.read_byte()
+        if rc != MV.ERR_SUCCESS:
+            print "wataw"
+            return rc
+        
+        if self.on_connect is not None:
+            self.in_callback = True
+            self.on_connect(result)
+            self.in_callback = False
+        
+        if result == 0:
+            self.state = MV.CS_CONNECTED
+            print "Coooooonected"
+            return MV.ERR_SUCCESS
+        
+        elif result >= 1 and result <= 5:
+            return MV.ERR_CONN_REFUSED
+        else:
+            return MV.ERR_PROTOCOL

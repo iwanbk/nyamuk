@@ -11,10 +11,10 @@ import nyamuk
 class MqttPkt:
     def __init__(self):
         self.command = 0
-        self.have_remaining = 0
+        self.have_remaining = False
         self.remaining_count = 0
         self.mid = 0
-        self.remaining_mult = 0
+        self.remaining_mult = 1
         self.remaining_length = 0
         self.packet_length = 0
         
@@ -24,7 +24,7 @@ class MqttPkt:
         #packet cursor
         self.pos = 0
         
-        self.payload = bytearray()
+        self.payload = None
         
         #self.next = None
     
@@ -88,6 +88,16 @@ class MqttPkt:
         self.pos = 1 + self.remaining_count
         
         return MV.ERR_SUCCESS
+    
+    def packet_cleanup(self):
+        self.command = 0
+        self.have_remaining = False
+        self.remaining_count = 0
+        self.remaining_mult = 1
+        self.remaining_length = 0
+        self.payload = None
+        self.to_process = 0
+        self.pos = 0
     
     def connect_build(self, nyamuk, keepalive, clean_session,retain = 0, dup = 0):
         will = 0
@@ -168,6 +178,16 @@ class MqttPkt:
             self.payload[self.pos + pos] = bytes[pos]
             
         self.pos += count
+    
+    def read_byte(self):
+        if self.pos + 1 > self.remaining_length:
+            return MV.ERR_PROTOCOL, None
+        
+        byte = self.payload[self.pos]
+        self.pos += 1
+        
+        return MV.ERR_SUCCESS, byte
+    
 
 def fixhdr_build(qos =0, retain = 0, dup = 0):
     pass
