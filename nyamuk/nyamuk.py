@@ -15,7 +15,7 @@ from nyamuk_msg import NyamukMsg, NyamukMsgAll
 
 MQTTCONNECT = 16# 1 << 4
 class Nyamuk:
-    def __init__(self, id, username = None, password = None):
+    def __init__(self, id = None, username = None, password = None):
         ''' Constructor '''
         self.id = id
         
