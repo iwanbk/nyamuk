@@ -21,12 +21,16 @@ Library python mosquitto adalah wrapper dari library C mosquitto,
 jadi kita perlu menginstall library mosquitto client di komputer client.
 
 Cara mudah : install seluruh mosquitto
-----------
+-----------------------------------------
 wget -c http://mosquitto.org/files/source/mosquitto-0.14.2.tar.gz
 tar zxf mosquitto-0.14.2.tar.gz
 cd mosquitto-0.14.2
 make
 sudo make install
+
+menjalankan mosquitto server
+--------------------------
+./src/mosquitto
 
 subscriber client
 ----------------
