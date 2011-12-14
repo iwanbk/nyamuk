@@ -37,6 +37,7 @@ def start_nyamuk(server, name, topic):
     
     index = 0
     while rc == MV.ERR_SUCCESS:
+        print "index = ", index
         rc = ny.loop()
         index += 1
         if index == 5:

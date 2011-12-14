@@ -12,10 +12,11 @@ from mqtt_pkt import MqttPkt
 from MV import MV
 import nyamuk_net
 from nyamuk_msg import NyamukMsg, NyamukMsgAll
+import mosquittod
 
 MQTTCONNECT = 16# 1 << 4
 class Nyamuk:
-    def __init__(self, id = None, username = None, password = None):
+    def __init__(self, id = None, username = None, password = None, WITH_BROKER = False):
         ''' Constructor '''
         self.id = id
         
@@ -47,12 +48,14 @@ class Nyamuk:
         #networking
         self.sock = MV.INVALID_SOCKET
         
+        self.will = None
+        
         
         self.in_callback = False
         self.message_retry = MV.MESSAGE_RETRY
         self.last_retry_check = 0
         self.messages = None
-        self.will = None
+        
         
         #LOGGING:TODO
         self.log_priorities = -1
@@ -121,6 +124,8 @@ class Nyamuk:
     def subscribe(self, mid, topic, qos):
         if self.sock == MV.INVALID_SOCKET:
             return MV.ERR_NO_CONN
+        
+        print "Sending SUBSCRIBE"
         return self.send_subscribe(mid, False, topic, qos)
         
     def send_subscribe(self, mid, dup, topic, qos):
@@ -213,7 +218,7 @@ class Nyamuk:
         to_read, to_write, in_error = select.select(rlist, wlist, [], timeout)
         
         if len(to_read) > 0:
-            rc = self.loop_read(to_read)
+            rc = self.loop_read()
             if rc != MV.ERR_SUCCESS:
                 self.socket_close()
                 if self.state == MV.CS_DISCONNECTING:
@@ -233,19 +238,26 @@ class Nyamuk:
         
         return MV.ERR_SUCCESS
     
-    def loop_read(self, rlist):
-        '''
-        read loop
-        '''
-        
+    def loop_read(self, WITH_BROKER = False):
+        return self.packet_read(WITH_BROKER)
+    
+    def packet_read(self, WITH_BROKER = False):
+        """Read packet."""
         if self.sock == MV.INVALID_SOCKET:
             return MV.ERR_NO_CONN
         
         if self.in_packet.command == 0:
             readlen, ba,status = nyamuk_net.read(self.sock, 1)
-            byte = ba[0]
+            
             if readlen == 1:
+                byte = ba[0]
                 self.in_packet.command = byte
+                
+                if WITH_BROKER == True:
+                    #bytes_received++
+                    if self.bridge is not None and self.state == MV.CS_NEW and (byte & 0xF) != MV.CMD_CONNECT:
+                        return 1
+                    
             else:
                 if readlen == 0:
                     return MV.ERR_CONN_LOST
@@ -303,7 +315,10 @@ class Nyamuk:
         #all data for this packet is read
         self.in_packet.pos = 0
         
-        rc = self.packet_handle()
+        if WITH_BROKER == True:
+            rc = self.packet_handle()
+        else:
+            rc = self.packet_handle()
         
         self.in_packet.packet_cleanup()
         
@@ -313,6 +328,7 @@ class Nyamuk:
                 
     def loop_write(self, wlist):
         pass
+    
     def loop_misc(self):
         self.check_keepalive()
         if self.last_retry_check + 1  < time.time():

@@ -41,12 +41,9 @@ class MqttPkt:
         print "pos = ", self.pos
         print "payload = ", self.payload
         print "------------------"
-    def alloc(self):
-        '''
-        from _mosquitto_packet_alloc
-        '''
         
-        print "self.alloc--------------------------"
+    def alloc(self):
+        """from _mosquitto_packet_alloc."""
         byte = 0
         remaining_bytes = bytearray(5)
         i = 0
@@ -65,7 +62,6 @@ class MqttPkt:
             if remaining_length > 0:
                 byte = byte | 0x80
                 
-            print "byte = ", byte, " remaing_length = ", remaining_length
             remaining_bytes[self.remaining_count] = byte
             self.remaining_count += 1
             
@@ -215,13 +211,16 @@ class MqttPkt:
         rc, len = self.read_uint16()
         
         if rc != MV.ERR_SUCCESS:
+            print "1"
             return rc, None
         
         if self.pos + len > self.remaining_length:
+            print "2. len = ", len, " remaining_length = ", self.remaining_length, " POS =", self.pos
             return MV.ERR_PROTOCOL, None
         
         ba = bytearray(len)
         if ba is None:
+            print 3
             return MV.ERR_NO_MEM, None
         
         for x in range(0, len):
