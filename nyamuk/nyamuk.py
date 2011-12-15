@@ -553,4 +553,4 @@ class Nyamuk:
         if rc != MV.ERR_SUCCESS:
             return rc
         
-        self.packet_queue(pkt)
+        return self.packet_queue(pkt)
