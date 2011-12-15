@@ -35,6 +35,8 @@ class Bee(nyamuk.Nyamuk):
             return self.handle_connect()
         elif cmd == MV.CMD_SUBSCRIBE:
             return self.handle_subscribe()
+        elif cmd == MV.CMD_PINGREQ:
+            return self.handle_pingreq()
         else:
             print "Unsupport CMD = ", cmd
             return MV.ERR_NOT_SUPPORTED
@@ -158,6 +160,15 @@ class Bee(nyamuk.Nyamuk):
         
         return rc
     
+    def handle_pingreq(self):
+        """Handle PINGREQ."""
+        if self.in_packet.remaining_length != 0:
+            return MV.ERR_PROTOCOL
+        
+        self.logger.logger.info("Received PINGREQ from %s", self.id)
+        
+        return self.send_pingresp()
+    
     def disconnect(self):
         self.logger.logger.info("Disconnect the Client : %s", self.id)
         self.socket_close()
@@ -192,3 +203,8 @@ class Bee(nyamuk.Nyamuk):
             pkt.write_bytes(payload, payloadlen)
         
         return self.packet_queue(pkt)
+    
+    def send_pingresp(self):
+        self.logger.logger.debug("Sending PINGRESP to %s ", self.id)
+        
+        return self.send_simple_command(MV.CMD_PINGRESP)
