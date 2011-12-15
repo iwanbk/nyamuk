@@ -5,6 +5,7 @@ Use gevent
 '''
 import sys
 import socket
+import logging
 
 import gevent
 from gevent import monkey; monkey.patch_socket()
@@ -14,17 +15,20 @@ import subs_mgr
 import conn_mgr
 import bee
 from MV import MV
+from bee_logger import BeeLogger
 
 SubsMgr = subs_mgr.SubscriptionManager()
 ConnMgr = conn_mgr.ConnectionManager()
+logger = BeeLogger(logging.DEBUG)
 
 def handle(sock, addr):
     global SubsMgr
     global ConnMgr
+    global logger
     
     print addr
     
-    b = bee.Bee(sock, addr, ConnMgr, SubsMgr)
+    b = bee.Bee(sock, addr, ConnMgr, SubsMgr, logger)
 
     rc = b.packet_read(True)
     while rc == MV.ERR_SUCCESS:
