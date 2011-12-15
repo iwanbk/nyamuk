@@ -32,7 +32,9 @@ def handle(sock, addr):
 
     rc = b.packet_read(True)
     while rc == MV.ERR_SUCCESS:
-        rc = b.packet_read()
+        rc = b.loop()
+    
+    print "RC = ",rc
     
     
 if __name__ == '__main__':
