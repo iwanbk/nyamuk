@@ -8,7 +8,7 @@ from MV import MV
 from mqtt_pkt import MqttPkt
 
 class Bee(nyamuk.Nyamuk):
-    def __init__(self, sock, addr, conn_mgr, subs_mgr):
+    def __init__(self, sock, addr, conn_mgr, subs_mgr, logger):
         nyamuk.Nyamuk.__init__(self)
         
         #from nyamuk
@@ -20,9 +20,13 @@ class Bee(nyamuk.Nyamuk):
         self.listener = None
         self.addr = addr
         
+        self.logger = logger
         self.cm = conn_mgr
         self.sm = subs_mgr  #subscription manager attached to this bee
     
+    def loop(self, timeout = 1):
+        return self.packet_read()
+        
     def packet_handle(self):
         """Packet Handling Dispatcher."""
         cmd = self.in_packet.command & 0xF0
@@ -108,7 +112,7 @@ class Bee(nyamuk.Nyamuk):
         self.cm.add(self)
         
         print "New client connected from ", self.addr
-        
+        self.logger.logger.info("New client connected from %s", self.addr)
         return self.send_connack(0)
         
     def handle_subscribe(self):
@@ -152,8 +156,10 @@ class Bee(nyamuk.Nyamuk):
         
         rc = self.send_suback(mid, payloadlen, payload)
         
+        return rc
+    
     def disconnect(self):
-        print "[mqtt3_context_disconnect]Unimplemented Func"
+        self.logger.logger.info("Disconnect the Client : %s", self.id)
         self.socket_close()
         sys.exit(-1)
     
