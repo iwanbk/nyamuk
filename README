@@ -7,8 +7,12 @@ M2M software based on mosquitto
 Nyamuk Client
 -------------
 Fitur:
-- Username
-- Password
+- CONNECT
+	with Username
+	with Password
+- PUBLISH
+- SUBSCRIBE
+- PINGREQ
 - QoS = 0
 - Topic satu level (non hierarchial)
 
