@@ -98,17 +98,18 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             print "Unknown protocol. Cmd = ", cmd
             return MV.ERR_PROTOCOL
     
-    def connect(self, hostname = "localhost", port = 1883, clean_session = True):
+    def connect(self, hostname = "localhost", port = 1883, username = None, password = None,clean_session = True):
         """Connect to server."""
         self.hostnamne = hostname
+        self.port = port
+        self.username = username
+        self.password = password
         self.port = port
         self.clean_session = clean_session
         
         #CONNECT packet
         pkt = MqttPkt()
-        print "Build Connect packet"
         pkt.connect_build(self, self.keep_alive, clean_session)
-        print "Build COnnect packet OK"
         
         #create socket
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -187,17 +188,15 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         
         rc, result = self.in_packet.read_byte()
         if rc != MV.ERR_SUCCESS:
-            print "wataw"
             return rc
         
         if self.on_connect is not None:
             self.in_callback = True
-            self.on_connect(result, self)
+            self.on_connect(self, result)
             self.in_callback = False
         
         if result == 0:
             self.state = MV.CS_CONNECTED
-            print "Coooooonected"
             return MV.ERR_SUCCESS
         
         elif result >= 1 and result <= 5:

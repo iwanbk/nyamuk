@@ -3,14 +3,24 @@ import nyamuk
 from MV import MV
 
 the_topic = ""
-def on_connect(rc, obj):
+def on_connect(obj, rc):
     if rc == 0:
-        print "on_connect callback : success"
+        print "on_connect callback : connection success"
         #print "subscribing to topic = ", the_topic
         #mid = 1
         #rc = obj.subscribe(mid, topic, 0)
+    elif rc == 1:
+        print "Connection refused : unacceptable protocol version"
+    elif rc == 2:
+        print "Connection refused : identifier rejected"
+    elif rc == 2:
+        print "Connection refused : broker unavailable"
+    elif rc == 2:
+        print "Connection refused : bad username or password"
+    elif rc == 2:
+        print "Connection refused : not authorized"
     else:
-        print "on_connect callback : failed"
+        print "Connection refused : unknown reason = ", rc
     
 def on_message(nyamuk, msg):
     print "--- message --"
@@ -30,7 +40,7 @@ def start_nyamuk(server, name, topic):
     ny.on_subscribe = on_subscribe
     the_topic = topic
     
-    rc = ny.connect(server)
+    rc = ny.connect(server, username = "satu", password = "satu")
     if rc != MV.ERR_SUCCESS:
         print "Can't connect"
         sys.exit(-1)

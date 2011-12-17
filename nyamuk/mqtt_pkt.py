@@ -2,6 +2,8 @@
 MQTT Packet
 @author : Iwan Budi Kusnanto
 '''
+import sys
+
 from MV import MV
 import nyamuk_net
 
@@ -136,11 +138,16 @@ class MqttPkt:
         self.write_string(nyamuk.id, len(nyamuk.id))
         
         if will:
-            pass #TODO
+            #TODO
+            sys.exit(-1)
         if nyamuk.username is not None:
-            pass #TODO
-        
+            self.write_string(nyamuk.username, len(nyamuk.username))
+            if nyamuk.password is not None:
+                self.write_string(nyamuk.password, len(nyamuk.password))
+            
         nyamuk.keep_alive = keepalive
+        
+        return MV.ERR_SUCCESS
     
     def write_string(self, str, length):
         '''
