@@ -3,9 +3,31 @@ Nyamuk
 =======================================
 M2M software based on mosquitto
 
+-------------
+Nyamuk Client
+-------------
+Fitur:
+- Username
+- Password
+- QoS = 0
+- Topic satu level (non hierarchial)
+
+TODO:
+- SSL
+- Hierarchial Topic
+- QoS 1
+- QoS 2
+
+Test client:
+-------------
+* nyamuk/subnya.py
+subscriber
+
+* nyamuk/pubnya.py
+publisher
 
 ---------------------------------------
-C Test client
+C TEST CLIENT
 ---------------------------------------
 Test Client dalam bahasa C ada di direktori client di source mosquitto
 Contoh :
@@ -14,14 +36,9 @@ Contoh :
 Lihat bagian bawah untuk keterangan opsi program
 
 
---------------------------------------
-Python Test Client
----------------------------------------
-Library python mosquitto adalah wrapper dari library C mosquitto,
-jadi kita perlu menginstall library mosquitto client di komputer client.
-
-Cara mudah : install seluruh mosquitto
------------------------------------------
+------------------------
+INSTALL MOSQUITTO SERVER
+------------------------
 wget -c http://mosquitto.org/files/source/mosquitto-0.14.2.tar.gz
 tar zxf mosquitto-0.14.2.tar.gz
 cd mosquitto-0.14.2
@@ -31,16 +48,6 @@ sudo make install
 menjalankan mosquitto server
 --------------------------
 ./src/mosquitto
-
-subscriber client
-----------------
-Client yang menerima message
-./test/submq.py
-
-publisher client
-----------------
-Client yang menerima message
-./tes/pubmq.py
 
 
 --------------------------
