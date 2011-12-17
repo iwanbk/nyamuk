@@ -40,7 +40,8 @@ def start_nyamuk(server, name, topic):
     ny.on_subscribe = on_subscribe
     the_topic = topic
     
-    rc = ny.connect(server, username = "satu", password = "satu")
+    #rc = ny.connect(server, username = "satu", password = "satu")
+    rc = ny.connect(server)
     if rc != MV.ERR_SUCCESS:
         print "Can't connect"
         sys.exit(-1)
