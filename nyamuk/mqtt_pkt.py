@@ -4,9 +4,6 @@ MQTT Packet
 '''
 from MV import MV
 import nyamuk_net
-import nyamuk
-
-
 
 class MqttPkt:
     def __init__(self):
@@ -29,6 +26,7 @@ class MqttPkt:
         #self.next = None
     
     def dump(self):
+        """Print packet content."""
         print "-----MqttPkt------"
         print "command = ", self.command
         print "have_remaining = ", self.have_remaining
@@ -96,6 +94,7 @@ class MqttPkt:
         self.pos = 0
     
     def connect_build(self, nyamuk, keepalive, clean_session,retain = 0, dup = 0):
+        """Build packet for CONNECT command."""
         will = 0
         byte = 0
         
@@ -169,8 +168,10 @@ class MqttPkt:
         #memcpy(&(packet->payload[packet->pos]), bytes, count);
         
         #print "count = ", count
+        #print "len(payload) = ", len(self.payload) ,"#self.pos = ", self.pos, " #count=", count, " #len(bytes)=", len(bytes)
         for pos in range(0, count):
             #print "pos = ",pos
+            #print "type payload = ", type(self.payload), " #type bytes = ", type(bytes), " #typebytes.pos=", type(bytes[pos])
             self.payload[self.pos + pos] = bytes[pos]
             
         self.pos += count
@@ -211,16 +212,13 @@ class MqttPkt:
         rc, len = self.read_uint16()
         
         if rc != MV.ERR_SUCCESS:
-            print "1"
             return rc, None
         
         if self.pos + len > self.remaining_length:
-            print "2. len = ", len, " remaining_length = ", self.remaining_length, " POS =", self.pos
             return MV.ERR_PROTOCOL, None
         
         ba = bytearray(len)
         if ba is None:
-            print 3
             return MV.ERR_NO_MEM, None
         
         for x in range(0, len):
@@ -228,6 +226,3 @@ class MqttPkt:
             self.pos += 1
         
         return MV.ERR_SUCCESS, ba 
-        
-def fixhdr_build(qos =0, retain = 0, dup = 0):
-    pass

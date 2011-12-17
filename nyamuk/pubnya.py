@@ -22,18 +22,19 @@ def start_nyamuk(server, name, topic, payload):
     ny.on_message = on_message
     ny.on_connect = on_connect
     
-    rc = ny.connect(server, keepalive = 60)
+    rc = ny.connect(server)
     if rc != MV.ERR_SUCCESS:
         print "Can't connect"
         sys.exit(-1)
     
-    #index = 0
-    rc = ny.publish(topic, payload)
+    index = 0
+    
     while rc == MV.ERR_SUCCESS:
         rc = ny.loop()
-        #index += 1
-        #if index == 15:
-        #    sys.exit(-1)
+        #print "index = ", index
+        index += 1
+        if index == 7:
+            rc = ny.publish(topic, payload)
     
 if __name__ == '__main__':
     if len(sys.argv) != 5:

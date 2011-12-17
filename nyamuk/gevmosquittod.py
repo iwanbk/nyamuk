@@ -8,7 +8,7 @@ import socket
 import logging
 
 import gevent
-from gevent import monkey; monkey.patch_socket()
+from gevent import monkey; monkey.patch_all()
 from gevent.server import StreamServer
 
 import subs_mgr
@@ -30,7 +30,7 @@ def handle(sock, addr):
     
     b = bee.Bee(sock, addr, ConnMgr, SubsMgr, logger)
 
-    rc = b.packet_read(True)
+    rc = b.loop(1)
     while rc == MV.ERR_SUCCESS:
         rc = b.loop()
     

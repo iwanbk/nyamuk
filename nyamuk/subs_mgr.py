@@ -8,6 +8,10 @@ class Subscription:
         self.topic = topic
         self.bee = bee
         self.qos = qos
+        self.id = bee.id + str(qos)
+    
+    def dump(self):
+        print "- bee.id = ",self.bee.id," qos = ", self.qos
         
 class SubscriptionManager:
     '''MQTT Subscription Manager.
@@ -20,19 +24,33 @@ class SubscriptionManager:
     
     def add(self, bee, topic, qos):
         ''' add topic to subscription list of some bee.'''
-        if bee.id not in self.dict:
-            self.dict[bee.id] = []
+        if topic not in self.dict:
+            self.dict[topic] = {}
         
         sub = Subscription(bee, topic, qos)
+        topic_dict = self.dict[topic]
         
-        if topic not in self.dict[bee.id]:
-            self.dict[bee.id].append(topic)
-    
-    def check(self, bee, topic):
-        '''Chek if a bee already listed on some topic.'''
-        if bee.id not in self.dict:
-            return False
-        if topic not in self.dict[bee.id]:
-            return False
-        return True
-    
+        if sub.id not in self.dict[topic]:
+            topic_dict[sub.id] = sub
+        
+        print "---ALL SUBSCRIBER OF TOPIC ", topic
+        self.print_subscriber(topic)
+        
+    def get_subscriber(self, topic):
+        """Get subscriber of some topic."""
+        list_subscriber = []
+        
+        if topic not in self.dict:
+            return list_subscriber
+        
+        topic_dict = self.dict[topic]
+        for k,sub in topic_dict.iteritems():
+            list_subscriber.append(sub)
+        
+        return list_subscriber
+    def print_subscriber(self, topic):
+        """Print all subscriber of some topic."""
+        ls = self.get_subscriber(topic)
+        
+        for s in ls:
+            s.dump()
