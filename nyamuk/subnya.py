@@ -13,11 +13,11 @@ def on_connect(obj, rc):
         print "Connection refused : unacceptable protocol version"
     elif rc == 2:
         print "Connection refused : identifier rejected"
-    elif rc == 2:
+    elif rc == 3:
         print "Connection refused : broker unavailable"
-    elif rc == 2:
+    elif rc == 4:
         print "Connection refused : bad username or password"
-    elif rc == 2:
+    elif rc == 5:
         print "Connection refused : not authorized"
     else:
         print "Connection refused : unknown reason = ", rc

@@ -5,7 +5,7 @@ import sys
 import nyamuk
 from MV import MV
 
-def on_connect(rc, nyamuk):
+def on_connect(nyamuk, rc):
     if rc == 0:
         print "on_connect callback : success"
     else:
