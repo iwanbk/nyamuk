@@ -25,7 +25,8 @@ def on_connect(obj, rc):
 def on_message(nyamuk, msg):
     print "--- message --"
     print "topic : " + msg.topic
-    print "payload : " + msg.payload
+    if msg.payload is not None:
+        print "payload : " + msg.payload
 
 def on_subscribe(nyamuk, mid, granted_qos):
     print "On Subscribe"
@@ -50,9 +51,8 @@ def start_nyamuk(server, name, topic):
     while rc == MV.ERR_SUCCESS:
         rc = ny.loop()
         index += 1
-        if index == 5:
-            mid = 0
-            rc = ny.subscribe(mid, topic, 0)
+        if index == 3:
+            rc = ny.subscribe(topic, 0)
     
 if __name__ == '__main__':
     if len(sys.argv) != 4:

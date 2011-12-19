@@ -1,6 +1,7 @@
 import socket
 import select
 import time
+import sys
 
 import base_nyamuk
 from MV import MV
@@ -10,7 +11,6 @@ from nyamuk_msg import NyamukMsg, NyamukMsgAll
 class Nyamuk(base_nyamuk.BaseNyamuk):
     def __init__(self, id):
         base_nyamuk.BaseNyamuk.__init__(self, id)
-        self.wait_publish = False
         
     def loop(self, timeout = 1):
         rlist = [self.sock]
@@ -22,6 +22,9 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         
         if len(to_read) > 0:
             rc = self.loop_read()
+            if isinstance(rc, int) == False:
+                return rc
+            
             if rc != MV.ERR_SUCCESS:
                 self.socket_close()
                 if self.state == MV.CS_DISCONNECTING:
@@ -124,6 +127,10 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         print "Enqueueu packet"
         return self.packet_queue(pkt)
     
+    def disconnect(self):
+        sys.exit(-1)
+        pass
+    
     def subscribe(self, topic, qos):
         """Subscribe to some topic."""
         if self.sock == MV.INVALID_SOCKET:
@@ -156,7 +163,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
     
     def publish(self, topic, payload = None, qos = 0, retain = False):
         """Publish some payload to server."""
-        print "PUBLISHING (",topic,"): ", payload
+        #print "PUBLISHING (",topic,"): ", payload
         payloadlen = len(payload)
         if topic is None or qos < 0 or qos > 2:
             print "PUBLISH:err inval"
