@@ -51,10 +51,6 @@ class MV:
     CMD_PINGRESP = 0xD0
     CMD_DISCONNECT = 0xE0
     
-    #NET ERROR STATUS
-    NET_EAGAIN = 0
-    NET_EWOULDBLOCK = 1
-    NET_COMPAT_ECONNRESET = 2
     #OTHER
     MESSAGE_RETRY = 20
     
@@ -69,7 +65,6 @@ class MV:
     MS_WAIT_PUBREC = 2
     MS_WAIT_PUBREL = 3
     MS_WAIT_PUBCOMP = 4
-    
     
     def __init__(self):
         pass
