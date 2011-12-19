@@ -44,8 +44,8 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         
         return MV.ERR_SUCCESS
     
-    def loop_read(self, WITH_BROKER = False):
-        return self.packet_read(WITH_BROKER)
+    def loop_read(self):
+        return self.packet_read()
     
     def loop_write(self, wlist):
         return self.packet_write()

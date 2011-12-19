@@ -29,6 +29,8 @@ class Bee(base_nyamuk.BaseNyamuk):
         self.sm = subs_mgr  #subscription manager attached to this bee
         
         self.pkt_mq = queue.Queue(10)
+        
+        self.as_broker = True
     
     def __del__(self):
         print "DELETING Bee Object : ", self.id, " ", self.addr
@@ -67,7 +69,7 @@ class Bee(base_nyamuk.BaseNyamuk):
         
         readable, writable, exceptional = select.select(rlist, wlist, [], timeout)
         if len(readable) > 0:
-            rc = self.packet_read(True)
+            rc = self.packet_read()
             if rc != MV.ERR_SUCCESS:
                 return rc
         
@@ -168,6 +170,8 @@ class Bee(base_nyamuk.BaseNyamuk):
         
         print "New client connected from ", self.addr
         self.logger.logger.info("New client connected from %s", self.addr)
+        
+        self.state = MV.CS_CONNECTED
         return self.send_connack(0)
         
     def handle_subscribe(self):

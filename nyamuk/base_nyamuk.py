@@ -142,8 +142,9 @@ class BaseNyamuk:
                 self.in_packet.command = byte
                 
                 if self.as_broker == True:
-                    if self.bridge is None and self.state == MV.CS_NEW and (byte & 0xF) != MV.CMD_CONNECT:
-                        return 1
+                    if self.bridge is None and self.state == MV.CS_NEW and (byte & 0xF0) != MV.CMD_CONNECT:
+                        print "RETURN ERR_PROTOCOL"
+                        return MV.ERR_PROTOCOL
             else:
                 if readlen == 0:
                     return MV.ERR_CONN_LOST
