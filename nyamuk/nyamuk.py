@@ -22,8 +22,6 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         
         if len(to_read) > 0:
             rc = self.loop_read()
-            if isinstance(rc, int) == False:
-                return rc
             
             if rc != MV.ERR_SUCCESS:
                 self.socket_close()
@@ -124,11 +122,10 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         #set to nonblock
         self.sock.setblocking(0)
         
-        print "Enqueueu packet"
         return self.packet_queue(pkt)
     
     def disconnect(self):
-        sys.exit(-1)
+        print "TODO : DISCONNECT"
         pass
     
     def subscribe(self, topic, qos):
@@ -303,10 +300,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
                 self.in_callback = True
                 self.on_message(self, message.msg)
                 self.in_callback = False
-            
-            if self.wait_publish == True:
-                return message.msg
-            
+
             return MV.ERR_SUCCESS
         elif qos == 1 or qos == 2:
             print "handle_publish. Unsupported QoS = 1 or QoS = 2"
