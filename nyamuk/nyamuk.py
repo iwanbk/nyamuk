@@ -10,7 +10,8 @@ from nyamuk_msg import NyamukMsg, NyamukMsgAll
 class Nyamuk(base_nyamuk.BaseNyamuk):
     def __init__(self, id):
         base_nyamuk.BaseNyamuk.__init__(self, id)
-    
+        self.wait_publish = False
+        
     def loop(self, timeout = 1):
         rlist = [self.sock]
         wlist = []
@@ -123,15 +124,15 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         print "Enqueueu packet"
         return self.packet_queue(pkt)
     
-    def subscribe(self, mid, topic, qos):
+    def subscribe(self, topic, qos):
         """Subscribe to some topic."""
         if self.sock == MV.INVALID_SOCKET:
             return MV.ERR_NO_CONN
         
-        print "Sending SUBSCRIBE"
-        return self.send_subscribe(mid, False, topic, qos)
+        print "SUBSCRIBE:", topic
+        return self.send_subscribe(False, topic, qos)
         
-    def send_subscribe(self, mid, dup, topic, qos):
+    def send_subscribe(self, dup, topic, qos):
         """Send subscribe COMMAND to server."""
         pkt = MqttPkt()
         
@@ -144,9 +145,8 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             return rc
         
         #variable header
-        local_mid = self.mid_generate()
-        mid = local_mid
-        pkt.write_uint16(local_mid)
+        mid = self.mid_generate()
+        pkt.write_uint16(mid)
         
         #payload
         pkt.write_string(topic, len(topic))
@@ -156,7 +156,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
     
     def publish(self, topic, payload = None, qos = 0, retain = False):
         """Publish some payload to server."""
-        print "PUBLISHING"
+        print "PUBLISHING (",topic,"): ", payload
         payloadlen = len(payload)
         if topic is None or qos < 0 or qos > 2:
             print "PUBLISH:err inval"
@@ -296,13 +296,16 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
                 self.in_callback = True
                 self.on_message(self, message.msg)
                 self.in_callback = False
+            
+            if self.wait_publish == True:
+                return message.msg
+            
             return MV.ERR_SUCCESS
         elif qos == 1 or qos == 2:
             print "handle_publish. Unsupported QoS = 1 or QoS = 2"
             sys.exit(-1)
         else:
             return MV.ERR_PROTOCOL
-        
         
         return MV.ERR_SUCCESS
     
