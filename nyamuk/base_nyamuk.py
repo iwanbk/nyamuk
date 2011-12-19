@@ -7,6 +7,7 @@ import socket
 import select
 import time
 import sys
+import errno
 
 from mqtt_pkt import MqttPkt
 from MV import MV
@@ -62,6 +63,9 @@ class BaseNyamuk:
         
         self.host = None
         self.port = 1883
+        
+        #hack var
+        self.as_broker = False
     
     def __del__(self):
         pass
@@ -96,7 +100,7 @@ class BaseNyamuk:
         
         while len(self.out_packet) > 0:
             pkt = self.out_packet[0]
-            status, write_length = nyamuk_net.write(self.sock, pkt.payload)
+            write_length, status = nyamuk_net.write(self.sock, pkt.payload)
             if write_length > 0:
                 pkt.to_process -= write_length
                 pkt.pos += write_length
@@ -104,9 +108,9 @@ class BaseNyamuk:
                 if pkt.to_process > 0:
                     return MV.ERR_SUCCESS
             else:
-                if status == MV.NET_EAGAIN or status == MV.NET_EWOULDBLOCK:
+                if status == errno.EAGAIN or status == errno.EWOULDBLOCK:
                     return MV.ERR_SUCCESS
-                elif status == MV.NET_COMPAT_ECONNRESET:
+                elif status == errno.ECONNRESET:
                     return MV.ERR_CONN_LOST
                 else:
                     return MV.ERR_UNKNOWN
@@ -126,30 +130,27 @@ class BaseNyamuk:
         
         return MV.ERR_SUCCESS
     
-    def packet_read(self, WITH_BROKER = False):
+    def packet_read(self):
         """Read packet from network."""
         if self.sock == MV.INVALID_SOCKET:
             return MV.ERR_NO_CONN
         
-        print "Packet read:1"
         if self.in_packet.command == 0:
             readlen, ba,status = nyamuk_net.read(self.sock, 1)
             if readlen == 1:
                 byte = ba[0]
                 self.in_packet.command = byte
                 
-                if WITH_BROKER == True:
-                    #bytes_received++
-                    if self.bridge is not None and self.state == MV.CS_NEW and (byte & 0xF) != MV.CMD_CONNECT:
+                if self.as_broker == True:
+                    if self.bridge is None and self.state == MV.CS_NEW and (byte & 0xF) != MV.CMD_CONNECT:
                         return 1
-                    
             else:
                 if readlen == 0:
                     return MV.ERR_CONN_LOST
-                if status == MV.NET_EAGAIN or status == MV.NET_EWOULDBLOCK:
+                if status == errno.EAGAIN or status == errno.EWOULDBLOCK:
                     return MV.ERR_SUCCESS
                 else:
-                    if status == MV.NET_COMPAT_ECONNRESET:
+                    if status == errno.ECONNRESET:
                         return MV.ERR_CONN_LOST
                     else:
                         return MV.ERR_UNKNOWN
@@ -189,10 +190,10 @@ class BaseNyamuk:
                     self.in_packet.pos += 1
                     self.in_packet.to_process -= 1
             else:
-                if status == MV.NET_EAGAIN or status == MV.NET_EWOULDBLOCK:
+                if status == errno.EAGAIN or status == errno.EWOULDBLOCK:
                     return MV.ERR_SUCCESS
                 else:
-                    if status == MV.NET_COMPAT_ECONNRESET:
+                    if status == errno.ECONNRESET:
                         return MV.ERR_CONN_LOST
                     else:
                         return MV.ERR_UNKNOWN
