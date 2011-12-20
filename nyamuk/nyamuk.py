@@ -12,6 +12,7 @@ import nyamuk_net
 class Nyamuk(base_nyamuk.BaseNyamuk):
     def __init__(self, id):
         base_nyamuk.BaseNyamuk.__init__(self, id)
+        self.in_pub_msg = []    #incoming publish message
         
     def loop(self, timeout = 1):
         rlist = [self.sock]
@@ -296,11 +297,14 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         message.timestamp = time.time()
         
         qos = message.msg.qos
+        
         if qos == 0:
             if self.on_message is not None:
                 self.in_callback = True
                 self.on_message(self, message.msg)
                 self.in_callback = False
+            else:
+                self.in_pub_msg.append(message.msg)
 
             return MV.ERR_SUCCESS
         elif qos == 1 or qos == 2:
