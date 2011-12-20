@@ -9,6 +9,23 @@ def MOSQ_MSB(A):
 def MOSQ_LSB(A):
     return (A & 0x00FF)
 
+def connect(sock, addr):
+    try:
+        ret = sock.connect(addr)
+    except socket.error as (errno, str):
+        print "socket.error. Errno = ", errno, " err msg = ", str
+        return -1, errno
+    except socket.herror as (errno, str):
+        print "socket.error. Errno = ", errno, " err msg = ", str
+        return -1, errno
+    except socket.gaierror as (errno,str):
+        print "socket.error. Errno = ", errno, " err msg = ", str
+        return -1, errno
+    except socket.timeout:
+        return -1, errno.ETIMEDOUT
+    
+    return 0
+    
 def read(sock, count):
     """Read count byte from socket."""
     try:
