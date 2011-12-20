@@ -7,6 +7,7 @@ import base_nyamuk
 from MV import MV
 from mqtt_pkt import MqttPkt
 from nyamuk_msg import NyamukMsg, NyamukMsgAll
+import nyamuk_net
 
 class Nyamuk(base_nyamuk.BaseNyamuk):
     def __init__(self, id):
@@ -84,12 +85,9 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             print "Received PUBCOMP"
             sys.exit(-1)
         elif cmd == MV.CMD_SUBSCRIBE:
-            print "Received SUBSCRIBE"
             sys.exit(-1)
         elif cmd == MV.CMD_SUBACK:
-            print "Received SUBACK"
             return self.handle_suback()
-            
         elif cmd == MV.CMD_UNSUBSCRIBE:
             print "Received UNSUBSCRIBE"
             sys.exit(-1)
@@ -117,7 +115,10 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         
         print "Connecting to server ...."
-        ret = self.sock.connect((hostname, port))
+        ret = nyamuk_net.connect(self.sock,(hostname, port))
+        
+        if ret != 0:
+            return MV.ERR_NO_CONN
         
         #set to nonblock
         self.sock.setblocking(0)
