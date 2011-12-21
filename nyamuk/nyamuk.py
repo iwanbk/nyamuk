@@ -143,8 +143,12 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         return self.packet_queue(pkt)
     
     def disconnect(self):
-        print "TODO : DISCONNECT"
-        pass
+        self.logger.info("DISCONNECT")
+        if self.sock == MV.INVALID_SOCKET:
+            return MV.ERR_NO_CONN
+        self.state = MV.CS_DISCONNECTING
+        
+        return self.send_disconnect()
     
     def subscribe(self, topic, qos):
         """Subscribe to some topic."""
@@ -153,6 +157,9 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         
         self.logger.info("SUBSCRIBE: %s", topic)
         return self.send_subscribe(False, topic, qos)
+    
+    def send_disconnect(self):
+        return self.send_simple_command(MV.CMD_DISCONNECT)
         
     def send_subscribe(self, dup, topic, qos):
         """Send subscribe COMMAND to server."""
