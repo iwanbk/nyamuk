@@ -54,3 +54,11 @@ class SubscriptionManager:
         
         for s in ls:
             s.dump()
+    
+    def get_hier_list(self, topic):
+        """Get list of topic hierarchi."""
+        hier_list = topic.split("/")
+        
+        #TODO : cek hasil splitan :)
+        
+        return hier_list

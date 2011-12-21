@@ -180,7 +180,7 @@ class Bee(base_nyamuk.BaseNyamuk):
         payload = bytearray(0)
         payloadlen = 0
         
-        print "Handle subscribe from : ", self.id, " at ", self.addr
+        self.logger.logger.debug("Handle subscribe from : % at %s", self.id, self.addr)
         
         rc, mid = self.in_packet.read_uint16()
         if rc != MV.ERR_SUCCESS:
@@ -192,7 +192,8 @@ class Bee(base_nyamuk.BaseNyamuk):
                 return 1
             
             if len(ba_sub) == 0:
-                print "Empty Subscription from ", self.id, ". Disconnecting.."
+                self.logger.logger.info("Empty Subscription from %s. Disconnecting..", self.id)
+                return 1
             
             sub = ba_sub.decode()
             
@@ -200,11 +201,14 @@ class Bee(base_nyamuk.BaseNyamuk):
             if rc != MV.ERR_SUCCESS:
                 return 1
                 
-            if qos > 2 or qos < 0:
-                #TODO
-                sys.exit(-1)
+            if qos > 2:
+                self.logger.logger.info("Invalid QoS in SUBSCRIBE command from :%s", self.id)
+                return 1
                 
             #fix subtopic TODO
+            rc, sub = self._fix_subtopic(sub)
+            if rc != MV.ERR_SUCCESS:
+                return 1
                 
             rc = self.sm.add(self, sub, qos)
             
