@@ -148,7 +148,9 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             return MV.ERR_NO_CONN
         self.state = MV.CS_DISCONNECTING
         
-        return self.send_disconnect()
+        rc = self.send_disconnect()
+        self.socket_close()
+        return rc
     
     def subscribe(self, topic, qos):
         """Subscribe to some topic."""
