@@ -2,6 +2,7 @@ import socket
 import select
 import time
 import sys
+import logging
 
 import base_nyamuk
 from MV import MV
@@ -10,9 +11,24 @@ from nyamuk_msg import NyamukMsg, NyamukMsgAll
 import nyamuk_net
 
 class Nyamuk(base_nyamuk.BaseNyamuk):
-    def __init__(self, id):
+    def __init__(self, id,log_level = logging.INFO):
         base_nyamuk.BaseNyamuk.__init__(self, id)
         self.in_pub_msg = []    #incoming publish message
+        
+        #logging
+        logger = logging.Logger(id)
+        
+        self.logger = logging.getLogger(id)
+        self.logger.setLevel(log_level)
+        
+        ch = logging.StreamHandler()
+        ch.setLevel(log_level)
+        
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        
+        ch.setFormatter(formatter)
+        
+        self.logger.addHandler(ch)
         
     def loop(self, timeout = 1):
         rlist = [self.sock]
@@ -96,7 +112,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             print "Received UNSUBACK"
             sys.exit(-1)
         else:
-            print "Unknown protocol. Cmd = ", cmd
+            self.logger.warning("Unknown protocol. Cmd = ", cmd)
             return MV.ERR_PROTOCOL
     
     def connect(self, hostname = "localhost", port = 1883, username = None, password = None,clean_session = True):
@@ -115,7 +131,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         #create socket
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         
-        print "Connecting to server ...."
+        self.logger.info("Connecting to server ....%s",hostname)
         ret = nyamuk_net.connect(self.sock,(hostname, port))
         
         if ret != 0:
@@ -135,7 +151,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         if self.sock == MV.INVALID_SOCKET:
             return MV.ERR_NO_CONN
         
-        print "SUBSCRIBE:", topic
+        self.logger.info("SUBSCRIBE: %s", topic)
         return self.send_subscribe(False, topic, qos)
         
     def send_subscribe(self, dup, topic, qos):
@@ -169,7 +185,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             return MV.ERR_INVAL
         
         if payloadlen > 268435455:
-            print "PUBLISH:err payload"
+            self.logger.error("PUBLISH:err payload len:%d", payloadlen)
             return MV.ERR_PAYLOAD_SIZE
         
         #wildcard check : TODO
@@ -186,10 +202,10 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
     
     def handle_connack(self):
         """Handle incoming CONNACK command."""
-        print "Received CONNACK"
+        self.logger.info("CONNACK reveived")
         rc, byte = self.in_packet.read_byte()
         if rc != MV.ERR_SUCCESS:
-            print "faul"
+            self.logger.error("error read byte")
             return rc
         
         rc, result = self.in_packet.read_byte()
@@ -213,12 +229,12 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
     
     def handle_pingresp(self):
         """Handle incoming PINGRESP packet."""
-        print "Received PINGRESP"
+        self.logger.debug("PINGRESP received")
         return MV.ERR_SUCCESS
     
     def handle_suback(self):
         """Handle incoming SUBACK packet."""
-        print "Received SUBACK"
+        self.logger.info("SUBACK received")
         
         rc, mid = self.in_packet.read_uint16()
         
@@ -255,12 +271,13 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
     
     def send_pingreq(self):
         """Send PINGREQ command to server."""
-        print "SEND PINGREQ"
+        self.logger.debug("SEND PINGREQ")
         self.send_simple_command(MV.CMD_PINGREQ)
     
     def handle_publish(self):
         """Handle incoming PUBLISH packet."""
-        print "Received PUBLISH"
+        print 
+        self.logger.debug("PUBLISH received")
         
         header = self.in_packet.command
         
@@ -291,8 +308,8 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             if rc != MV.ERR_SUCCESS:
                 return rc
         
-        print "Receied PUBLISH(d=",message.dup,",qos=",message.msg.qos,",retain=",message.msg.retain
-        print "\tmid=",message.msg.mid,",topic=",message.msg.topic,",payloadlen=",message.msg.payloadlen
+        self.logger.debug("Received PUBLISH(dup = %d,qos=%d,retain=%s",message.dup, message.msg.qos, message.msg.retain)
+        self.logger.debug("\tmid=%d, topic=%s, payloadlen=%d", message.msg.mid, message.msg.topic, message.msg.payloadlen)
         
         message.timestamp = time.time()
         
@@ -308,7 +325,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
 
             return MV.ERR_SUCCESS
         elif qos == 1 or qos == 2:
-            print "handle_publish. Unsupported QoS = 1 or QoS = 2"
+            self.logger.error("handle_publish. Unsupported QoS = 1 or QoS = 2")
             sys.exit(-1)
         else:
             return MV.ERR_PROTOCOL
@@ -317,6 +334,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
     
     def send_publish(self, mid, topic, payload, qos, retain, dup):
         """Send PUBLISH."""
+        self.logger.debug("Send PUBLISH")
         if self.sock == MV.INVALID_SOCKET:
             return MV.ERR_NO_CONN
         return self.send_real_publish(mid, topic, payload, qos, retain, dup)
