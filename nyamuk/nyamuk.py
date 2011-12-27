@@ -285,7 +285,6 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
     
     def handle_publish(self):
         """Handle incoming PUBLISH packet."""
-        print 
         self.logger.debug("PUBLISH received")
         
         header = self.in_packet.command
