@@ -4,7 +4,7 @@ MQTT Packet
 '''
 import sys
 
-from MV import MV
+import nyamuk_const as NC
 import nyamuk_net
 
 class MqttPkt:
@@ -69,7 +69,7 @@ class MqttPkt:
                 loop_flag = False
         
         if self.remaining_count == 5:
-            return MV.ERR_PAYLOAD_SIZE
+            return NC.ERR_PAYLOAD_SIZE
         
         self.packet_length = self.remaining_length + 1 + self.remaining_count
         self.payload = bytearray(self.packet_length)
@@ -83,7 +83,7 @@ class MqttPkt:
         
         self.pos = 1 + self.remaining_count
         
-        return MV.ERR_SUCCESS
+        return NC.ERR_SUCCESS
     
     def packet_cleanup(self):
         self.command = 0
@@ -111,16 +111,16 @@ class MqttPkt:
             if nyamuk.password != None:
                 payload_len = payload_len + 2 + len(nyamuk.password)
         
-        self.command = MV.CONNECT
+        self.command = NC.CMD_CONNECT
         self.remaining_length = 12 + payload_len
     
         rc = self.alloc()
-        if rc != MV.ERR_SUCCESS:
+        if rc != NC.ERR_SUCCESS:
             return rc
          
         #var header
-        self.write_string(MV.PROTOCOL_NAME, len(MV.PROTOCOL_NAME))
-        self.write_byte(MV.PROTOCOL_VERSION)
+        self.write_string(NC.PROTOCOL_NAME, len(NC.PROTOCOL_NAME))
+        self.write_byte(NC.PROTOCOL_VERSION)
         
         byte = (clean_session & 0x1) << 1
         
@@ -147,7 +147,7 @@ class MqttPkt:
             
         nyamuk.keep_alive = keepalive
         
-        return MV.ERR_SUCCESS
+        return NC.ERR_SUCCESS
     
     def write_string(self, str, length):
         '''
@@ -185,16 +185,16 @@ class MqttPkt:
     
     def read_byte(self):
         if self.pos + 1 > self.remaining_length:
-            return MV.ERR_PROTOCOL, None
+            return NC.ERR_PROTOCOL, None
         
         byte = self.payload[self.pos]
         self.pos += 1
         
-        return MV.ERR_SUCCESS, byte
+        return NC.ERR_SUCCESS, byte
     
     def read_uint16(self):
         if self.pos + 2 > self.remaining_length:
-            return MV.ERR_PROTOCOL
+            return NC.ERR_PROTOCOL
         msb = self.payload[self.pos]
         self.pos += 1
         lsb = self.payload[self.pos]
@@ -202,34 +202,34 @@ class MqttPkt:
         
         word = (msb << 8) + lsb
         
-        return MV.ERR_SUCCESS, word
+        return NC.ERR_SUCCESS, word
     
     def read_bytes(self, count):
         if self.pos + count > self.remaining_length:
-            return MV.ERR_PROTOCOL, None
+            return NC.ERR_PROTOCOL, None
         
         ba = bytearray(count)
         for x in range(0, count):
             ba[x] = self.payload[self.pos]
             self.pos += 1
         
-        return MV.ERR_SUCCESS, ba
+        return NC.ERR_SUCCESS, ba
     
     def read_string(self):
         rc, len = self.read_uint16()
         
-        if rc != MV.ERR_SUCCESS:
+        if rc != NC.ERR_SUCCESS:
             return rc, None
         
         if self.pos + len > self.remaining_length:
-            return MV.ERR_PROTOCOL, None
+            return NC.ERR_PROTOCOL, None
         
         ba = bytearray(len)
         if ba is None:
-            return MV.ERR_NO_MEM, None
+            return NC.ERR_NO_MEM, None
         
         for x in range(0, len):
             ba[x] = self.payload[self.pos]
             self.pos += 1
         
-        return MV.ERR_SUCCESS, ba 
+        return NC.ERR_SUCCESS, ba 

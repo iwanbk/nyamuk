@@ -5,7 +5,7 @@ import sys
 import logging
 
 import base_nyamuk
-from MV import MV
+import nyamuk_const as NC
 from mqtt_pkt import MqttPkt
 from nyamuk_msg import NyamukMsg, NyamukMsgAll
 import nyamuk_net
@@ -41,10 +41,10 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         if len(to_read) > 0:
             rc = self.loop_read()
             
-            if rc != MV.ERR_SUCCESS:
+            if rc != NC.ERR_SUCCESS:
                 self.socket_close()
-                if self.state == MV.CS_DISCONNECTING:
-                    rc = MV.ERR_SUCCESS
+                if self.state == NC.CS_DISCONNECTING:
+                    rc = NC.ERR_SUCCESS
                     
                 if self.on_disconnect is not None:
                     self.in_callback = True
@@ -58,7 +58,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             
         self.loop_misc()
         
-        return MV.ERR_SUCCESS
+        return NC.ERR_SUCCESS
     
     def loop_read(self):
         return self.packet_read()
@@ -70,11 +70,11 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         self.check_keepalive()
         if self.last_retry_check + 1  < time.time():
             pass
-        return MV.ERR_SUCCESS
+        return NC.ERR_SUCCESS
     
     def check_keepalive(self):
-        if self.sock != MV.INVALID_SOCKET and time.time() - self.last_msg_out >= self.keep_alive:
-            if self.state == MV.CS_CONNECTED:
+        if self.sock != NC.INVALID_SOCKET and time.time() - self.last_msg_out >= self.keep_alive:
+            if self.state == NC.CS_CONNECTED:
                 self.send_pingreq()
             else:
                 self.socket_close()
@@ -83,37 +83,37 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         """Incoming packet handler dispatcher."""
         cmd = self.in_packet.command & 0xF0
         
-        if cmd == MV.CMD_CONNACK:
+        if cmd == NC.CMD_CONNACK:
             return self.handle_connack()
-        elif cmd == MV.CMD_PINGRESP:
+        elif cmd == NC.CMD_PINGRESP:
             return self.handle_pingresp()
-        elif cmd == MV.CMD_PUBLISH:
+        elif cmd == NC.CMD_PUBLISH:
             return self.handle_publish()
-        elif cmd == MV.CMD_PUBACK:
+        elif cmd == NC.CMD_PUBACK:
             print "Received PUBACK"
             sys.exit(-1)
-        elif cmd == MV.CMD_PUBREC:
+        elif cmd == NC.CMD_PUBREC:
             print "Received PUBREC"
             sys.exit(-1)
-        elif cmd == MV.CMD_PUBREL:
+        elif cmd == NC.CMD_PUBREL:
             print "Received PUBREL"
             sys.exit(-1)
-        elif cmd == MV.CMD_PUBCOMP:
+        elif cmd == NC.CMD_PUBCOMP:
             print "Received PUBCOMP"
             sys.exit(-1)
-        elif cmd == MV.CMD_SUBSCRIBE:
+        elif cmd == NC.CMD_SUBSCRIBE:
             sys.exit(-1)
-        elif cmd == MV.CMD_SUBACK:
+        elif cmd == NC.CMD_SUBACK:
             return self.handle_suback()
-        elif cmd == MV.CMD_UNSUBSCRIBE:
+        elif cmd == NC.CMD_UNSUBSCRIBE:
             print "Received UNSUBSCRIBE"
             sys.exit(-1)
-        elif cmd == MV.CMD_UNSUBACK:
+        elif cmd == NC.CMD_UNSUBACK:
             print "Received UNSUBACK"
             sys.exit(-1)
         else:
             self.logger.warning("Unknown protocol. Cmd = ", cmd)
-            return MV.ERR_PROTOCOL
+            return NC.ERR_PROTOCOL
     
     def connect(self, hostname = "localhost", port = 1883, username = None, password = None,clean_session = True):
         """Connect to server."""
@@ -135,7 +135,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         ret = nyamuk_net.connect(self.sock,(hostname, port))
         
         if ret != 0:
-            return MV.ERR_NO_CONN
+            return NC.ERR_NO_CONN
         
         #set to nonblock
         self.sock.setblocking(0)
@@ -144,9 +144,9 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
     
     def disconnect(self):
         self.logger.info("DISCONNECT")
-        if self.sock == MV.INVALID_SOCKET:
-            return MV.ERR_NO_CONN
-        self.state = MV.CS_DISCONNECTING
+        if self.sock == NC.INVALID_SOCKET:
+            return NC.ERR_NO_CONN
+        self.state = NC.CS_DISCONNECTING
         
         rc = self.send_disconnect()
         self.socket_close()
@@ -154,25 +154,25 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
     
     def subscribe(self, topic, qos):
         """Subscribe to some topic."""
-        if self.sock == MV.INVALID_SOCKET:
-            return MV.ERR_NO_CONN
+        if self.sock == NC.INVALID_SOCKET:
+            return NC.ERR_NO_CONN
         
         self.logger.info("SUBSCRIBE: %s", topic)
         return self.send_subscribe(False, topic, qos)
     
     def send_disconnect(self):
-        return self.send_simple_command(MV.CMD_DISCONNECT)
+        return self.send_simple_command(NC.CMD_DISCONNECT)
         
     def send_subscribe(self, dup, topic, qos):
         """Send subscribe COMMAND to server."""
         pkt = MqttPkt()
         
         pktlen = 2 + 2 + len(topic) + 1
-        pkt.command = MV.CMD_SUBSCRIBE | (dup << 3) | (1 << 1)
+        pkt.command = NC.CMD_SUBSCRIBE | (dup << 3) | (1 << 1)
         pkt.remaining_length = pktlen
         
         rc = pkt.alloc()
-        if rc != MV.ERR_SUCCESS:
+        if rc != NC.ERR_SUCCESS:
             return rc
         
         #variable header
@@ -191,11 +191,11 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         payloadlen = len(payload)
         if topic is None or qos < 0 or qos > 2:
             print "PUBLISH:err inval"
-            return MV.ERR_INVAL
+            return NC.ERR_INVAL
         
         if payloadlen > 268435455:
             self.logger.error("PUBLISH:err payload len:%d", payloadlen)
-            return MV.ERR_PAYLOAD_SIZE
+            return NC.ERR_PAYLOAD_SIZE
         
         #wildcard check : TODO
         
@@ -213,12 +213,12 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         """Handle incoming CONNACK command."""
         self.logger.info("CONNACK reveived")
         rc, byte = self.in_packet.read_byte()
-        if rc != MV.ERR_SUCCESS:
+        if rc != NC.ERR_SUCCESS:
             self.logger.error("error read byte")
             return rc
         
         rc, result = self.in_packet.read_byte()
-        if rc != MV.ERR_SUCCESS:
+        if rc != NC.ERR_SUCCESS:
             return rc
         
         if self.on_connect is not None:
@@ -227,19 +227,19 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             self.in_callback = False
         
         if result == 0:
-            self.state = MV.CS_CONNECTED
-            return MV.ERR_SUCCESS
+            self.state = NC.CS_CONNECTED
+            return NC.ERR_SUCCESS
         
         elif result >= 1 and result <= 5:
-            return MV.ERR_CONN_REFUSED
+            return NC.ERR_CONN_REFUSED
         else:
-            return MV.ERR_PROTOCOL
+            return NC.ERR_PROTOCOL
     
     
     def handle_pingresp(self):
         """Handle incoming PINGRESP packet."""
         self.logger.debug("PINGRESP received")
-        return MV.ERR_SUCCESS
+        return NC.ERR_SUCCESS
     
     def handle_suback(self):
         """Handle incoming SUBACK packet."""
@@ -247,20 +247,20 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         
         rc, mid = self.in_packet.read_uint16()
         
-        if rc != MV.ERR_SUCCESS:
+        if rc != NC.ERR_SUCCESS:
             return rc
         
         qos_count = self.in_packet.remaining_length - self.in_packet.pos
         granted_qos = bytearray(qos_count)
         
         if granted_qos is None:
-            return MV.ERR_NO_MEM
+            return NC.ERR_NO_MEM
         
         i = 0
         while self.in_packet.pos < self.in_packet.remaining_length:
             rc,byte = self.in_packet.read_byte()
             
-            if rc != MV.ERR_SUCCESS:
+            if rc != NC.ERR_SUCCESS:
                 granted_qos = None
                 return rc
             
@@ -276,12 +276,12 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         
         granted_qos = None
         
-        return MV.ERR_SUCCESS
+        return NC.ERR_SUCCESS
     
     def send_pingreq(self):
         """Send PINGREQ command to server."""
         self.logger.debug("SEND PINGREQ")
-        self.send_simple_command(MV.CMD_PINGREQ)
+        self.send_simple_command(NC.CMD_PINGREQ)
     
     def handle_publish(self):
         """Handle incoming PUBLISH packet."""
@@ -290,7 +290,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         header = self.in_packet.command
         
         message = NyamukMsgAll()
-        message.direction = MV.DIRECTION_IN
+        message.direction = NC.DIRECTION_IN
         message.dup = (header & 0x08) >> 3
         message.msg.qos = (header & 0x06) >> 1
         message.msg.retain = (header & 0x01)
@@ -298,7 +298,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         rc, ba = self.in_packet.read_string()
         message.msg.topic = ba.decode()
         
-        if rc != MV.ERR_SUCCESS:
+        if rc != NC.ERR_SUCCESS:
             return rc
         
         #fix_sub_topic TODO
@@ -306,14 +306,14 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         if message.msg.qos > 0:
             rc, word = self.in_packet.read_uint16()
             message.msg.mid = word
-            if rc != MV.ERR_SUCCESS:
+            if rc != NC.ERR_SUCCESS:
                 return rc
         
         message.msg.payloadlen = self.in_packet.remaining_length - self.in_packet.pos
         
         if message.msg.payloadlen > 0:
             rc, message.msg.payload = self.in_packet.read_bytes(message.msg.payloadlen)
-            if rc != MV.ERR_SUCCESS:
+            if rc != NC.ERR_SUCCESS:
                 return rc
         
         self.logger.debug("Received PUBLISH(dup = %d,qos=%d,retain=%s",message.dup, message.msg.qos, message.msg.retain)
@@ -331,25 +331,25 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             else:
                 self.in_pub_msg.append(message.msg)
 
-            return MV.ERR_SUCCESS
+            return NC.ERR_SUCCESS
         elif qos == 1 or qos == 2:
             self.logger.error("handle_publish. Unsupported QoS = 1 or QoS = 2")
             sys.exit(-1)
         else:
-            return MV.ERR_PROTOCOL
+            return NC.ERR_PROTOCOL
         
-        return MV.ERR_SUCCESS
+        return NC.ERR_SUCCESS
     
     def send_publish(self, mid, topic, payload, qos, retain, dup):
         """Send PUBLISH."""
         self.logger.debug("Send PUBLISH")
-        if self.sock == MV.INVALID_SOCKET:
-            return MV.ERR_NO_CONN
+        if self.sock == NC.INVALID_SOCKET:
+            return NC.ERR_NO_CONN
         return self.send_real_publish(mid, topic, payload, qos, retain, dup)
     
     def send_real_publish(self, mid, topic, payload, qos, retain, dup):
         rc, pkt = self.build_publish_pkt(mid, topic, payload, qos, retain, dup)
-        if rc != MV.ERR_SUCCESS:
+        if rc != NC.ERR_SUCCESS:
             return rc
         
         return self.packet_queue(pkt)

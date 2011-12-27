@@ -1,7 +1,8 @@
 import sys
+import logging
 
 from nyamuk import nyamuk
-from nyamuk.MV import MV
+from nyamuk import nyamuk_const as NC
 
 the_topic = ""
 def on_connect(obj, rc):
@@ -36,20 +37,21 @@ def on_subscribe(nyamuk, mid, granted_qos):
     
     
 def start_nyamuk(server, name, topic):
-    ny = nyamuk.Nyamuk(name)
+    ny = nyamuk.Nyamuk(name, logging.DEBUG)
     ny.on_message = on_message
     ny.on_connect = on_connect
     ny.on_subscribe = on_subscribe
+    ny.keep_alive = 10
     the_topic = topic
     
     #rc = ny.connect(server, username = "satu", password = "satu")
     rc = ny.connect(server)
-    if rc != MV.ERR_SUCCESS:
+    if rc != NC.ERR_SUCCESS:
         print "Can't connect"
         sys.exit(-1)
     
     index = 0
-    while rc == MV.ERR_SUCCESS:
+    while rc == NC.ERR_SUCCESS:
         rc = ny.loop()
         index += 1
         if index == 3:

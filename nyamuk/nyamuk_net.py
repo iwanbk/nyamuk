@@ -1,7 +1,7 @@
 import socket
 import errno
 
-from MV import MV
+import nyamuk_const as NC
 
 def MOSQ_MSB(A):
     return (( A & 0xFF00) >> 8)

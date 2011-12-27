@@ -1,5 +1,6 @@
 import time
-from MV import MV
+
+import nyamuk_const as NC
 
 class NyamukMsg:
     def __init__(self):
@@ -15,7 +16,7 @@ class NyamukMsgAll:
     def __init__(self):
         #next
         self.timestamp = time.time()
-        self.direction = MV.DIRECTION_NONE
-        self.state = MV.MS_INVALID
+        self.direction = NC.DIRECTION_NONE
+        self.state = NC.MS_INVALID
         self.dup = False
         self.msg = NyamukMsg()

@@ -10,7 +10,7 @@ import sys
 import errno
 
 from mqtt_pkt import MqttPkt
-from MV import MV
+import nyamuk_const as NC
 import nyamuk_net
 from nyamuk_msg import NyamukMsg, NyamukMsgAll
 
@@ -23,9 +23,9 @@ class BaseNyamuk:
         self.password = None
         
         self.address = ""
-        self.keep_alive = MV.KEEPALIVE_VAL
+        self.keep_alive = NC.KEEPALIVE_VAL
         self.clean_session = False
-        self.state = MV.CS_NEW
+        self.state = NC.CS_NEW
         self.last_msg_in = time.time()
         self.last_msg_out = time.time()
         self.last_mid = 0
@@ -38,13 +38,13 @@ class BaseNyamuk:
         self.in_packet.packet_cleanup()
         
         #networking
-        self.sock = MV.INVALID_SOCKET
+        self.sock = NC.INVALID_SOCKET
         
         self.will = None
         
         
         self.in_callback = False
-        self.message_retry = MV.MESSAGE_RETRY
+        self.message_retry = NC.MESSAGE_RETRY
         self.last_retry_check = 0
         self.messages = None
         
@@ -89,14 +89,14 @@ class BaseNyamuk:
         #if self.in_callback == False:
         #    return self.packet_write()
         #else:
-        #    return MV.ERR_SUCCESS
+        #    return NC.ERR_SUCCESS
         
-        return MV.ERR_SUCCESS
+        return NC.ERR_SUCCESS
     
     def packet_write(self):
         """Write packet to network."""
-        if self.sock == MV.INVALID_SOCKET:
-            return MV.ERR_NO_CONN
+        if self.sock == NC.INVALID_SOCKET:
+            return NC.ERR_NO_CONN
         
         while len(self.out_packet) > 0:
             pkt = self.out_packet[0]
@@ -106,16 +106,16 @@ class BaseNyamuk:
                 pkt.pos += write_length
                 
                 if pkt.to_process > 0:
-                    return MV.ERR_SUCCESS
+                    return NC.ERR_SUCCESS
             else:
                 if status == errno.EAGAIN or status == errno.EWOULDBLOCK:
-                    return MV.ERR_SUCCESS
+                    return NC.ERR_SUCCESS
                 elif status == errno.ECONNRESET:
-                    return MV.ERR_CONN_LOST
+                    return NC.ERR_CONN_LOST
                 else:
-                    return MV.ERR_UNKNOWN
+                    return NC.ERR_UNKNOWN
             
-            if pkt.command & 0xF6 == MV.CMD_PUBLISH and self.on_publish is not None:
+            if pkt.command & 0xF6 == NC.CMD_PUBLISH and self.on_publish is not None:
                 self.in_callback = True
                 self.on_publish(pkt.mid)
                 self.in_callback = False
@@ -128,12 +128,12 @@ class BaseNyamuk:
             self.last_msg_out = time.time()
             
         
-        return MV.ERR_SUCCESS
+        return NC.ERR_SUCCESS
     
     def packet_read(self):
         """Read packet from network."""
-        if self.sock == MV.INVALID_SOCKET:
-            return MV.ERR_NO_CONN
+        if self.sock == NC.INVALID_SOCKET:
+            return NC.ERR_NO_CONN
         
         if self.in_packet.command == 0:
             readlen, ba,status = nyamuk_net.read(self.sock, 1)
@@ -142,19 +142,19 @@ class BaseNyamuk:
                 self.in_packet.command = byte
                 
                 if self.as_broker == True:
-                    if self.bridge is None and self.state == MV.CS_NEW and (byte & 0xF0) != MV.CMD_CONNECT:
+                    if self.bridge is None and self.state == NC.CS_NEW and (byte & 0xF0) != NC.CMD_CONNECT:
                         print "RETURN ERR_PROTOCOL"
-                        return MV.ERR_PROTOCOL
+                        return NC.ERR_PROTOCOL
             else:
                 if readlen == 0:
-                    return MV.ERR_CONN_LOST
+                    return NC.ERR_CONN_LOST
                 if status == errno.EAGAIN or status == errno.EWOULDBLOCK:
-                    return MV.ERR_SUCCESS
+                    return NC.ERR_SUCCESS
                 else:
                     if status == errno.ECONNRESET:
-                        return MV.ERR_CONN_LOST
+                        return NC.ERR_CONN_LOST
                     else:
-                        return MV.ERR_UNKNOWN
+                        return NC.ERR_UNKNOWN
         
         if self.in_packet.have_remaining == False:
             loop_flag = True
@@ -164,13 +164,13 @@ class BaseNyamuk:
                 if readlen == 1:
                     self.in_packet.remaining_count += 1
                     if self.in_packet.remaining_count > 4:
-                        return MV.ERR_PROTOCOL
+                        return NC.ERR_PROTOCOL
                     
                     self.in_packet.remaining_length += (byte & 127) * self.in_packet.remaining_mult
                     self.in_packet.remaining_mult *= 128
                 else:
                     if readlen == 0:
-                        return MV.ERR_CONN_LOST
+                        return NC.ERR_CONN_LOST
                 
                 if (byte & 128) == 0:
                     loop_flag = False
@@ -178,7 +178,7 @@ class BaseNyamuk:
             if self.in_packet.remaining_length > 0:
                 self.in_packet.payload = bytearray(self.in_packet.remaining_length)
                 if self.in_packet.payload is None:
-                    return MV.ERR_NO_MEM
+                    return NC.ERR_NO_MEM
                 self.in_packet.to_process = self.in_packet.remaining_length
             
             self.in_packet.have_remaining = True
@@ -192,12 +192,12 @@ class BaseNyamuk:
                     self.in_packet.to_process -= 1
             else:
                 if status == errno.EAGAIN or status == errno.EWOULDBLOCK:
-                    return MV.ERR_SUCCESS
+                    return NC.ERR_SUCCESS
                 else:
                     if status == errno.ECONNRESET:
-                        return MV.ERR_CONN_LOST
+                        return NC.ERR_CONN_LOST
                     else:
-                        return MV.ERR_UNKNOWN
+                        return NC.ERR_UNKNOWN
         
         #all data for this packet is read
         self.in_packet.pos = 0
@@ -212,9 +212,9 @@ class BaseNyamuk:
                 
     def socket_close(self):
         """Close our socket."""
-        if self.sock != MV.INVALID_SOCKET:
+        if self.sock != NC.INVALID_SOCKET:
             self.sock.close()
-        self.sock = MV.INVALID_SOCKET
+        self.sock = NC.INVALID_SOCKET
         
     def build_publish_pkt(self, mid, topic, payload, qos, retain, dup):
         """Build PUBLISH packet."""
@@ -226,11 +226,11 @@ class BaseNyamuk:
             packetlen += 2
         
         pkt.mid = mid
-        pkt.command = MV.CMD_PUBLISH | ((dup & 0x1) << 3) | (qos << 1) | retain
+        pkt.command = NC.CMD_PUBLISH | ((dup & 0x1) << 3) | (qos << 1) | retain
         pkt.remaining_length = packetlen
         
         rc = pkt.alloc()
-        if rc != MV.ERR_SUCCESS:
+        if rc != NC.ERR_SUCCESS:
             return rc, None
         
         #variable header : Topic String
@@ -243,7 +243,7 @@ class BaseNyamuk:
         if payloadlen > 0:
             pkt.write_bytes(payload, payloadlen)
         
-        return MV.ERR_SUCCESS, pkt
+        return NC.ERR_SUCCESS, pkt
     
     def send_simple_command(self, cmd):
         pkt = MqttPkt()
@@ -252,7 +252,7 @@ class BaseNyamuk:
         pkt.remaining_length = 0
         
         rc = pkt.alloc()
-        if rc != MV.ERR_SUCCESS:
+        if rc != NC.ERR_SUCCESS:
             return rc
         
         return self.packet_queue(pkt)
