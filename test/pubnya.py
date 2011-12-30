@@ -4,7 +4,7 @@ MQTT Publisher Client
 import sys
 
 from nyamuk import nyamuk
-from nyamuk.MV import MV
+import nyamuk.nyamuk_const as NC
 
 def on_connect(nyamuk, rc):
     if rc == 0:
@@ -24,13 +24,13 @@ def start_nyamuk(server, name, topic, payload):
     ny.on_connect = on_connect
     
     rc = ny.connect(server)
-    if rc != MV.ERR_SUCCESS:
+    if rc != NC.ERR_SUCCESS:
         print "Can't connect"
         sys.exit(-1)
     
     index = 0
     
-    while rc == MV.ERR_SUCCESS:
+    while rc == NC.ERR_SUCCESS:
         rc = ny.loop()
         #print "index = ", index
         index += 1
