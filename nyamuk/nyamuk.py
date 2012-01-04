@@ -61,10 +61,12 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         return NC.ERR_SUCCESS
     
     def loop_read(self):
-        return self.packet_read()
+        rc, bytes_received = self.packet_read()
+        return rc
     
     def loop_write(self, wlist):
-        return self.packet_write()
+        rc, bytes_written =  self.packet_write()
+        return rc
     
     def loop_misc(self):
         self.check_keepalive()
