@@ -35,6 +35,11 @@ def on_subscribe(nyamuk, mid, granted_qos):
     print "\tQOS Count = ", len(granted_qos)
     print "\tMID = ", mid
     
+def make_sha(password):
+    import hashlib
+    
+    m = hashlib.sha1(password)
+    return m.hexdigest()
     
 def start_nyamuk(server, topic, name, username, password):
     ny = nyamuk.Nyamuk(name, logging.DEBUG)
@@ -46,7 +51,7 @@ def start_nyamuk(server, topic, name, username, password):
     
     #rc = ny.connect(server, username = "satu", password = "satu")
     #rc = ny.connect(server)
-    rc = ny.connect(server, username = username, password = password)
+    rc = ny.connect(server, username = username, password = make_sha(password))
     if rc != NC.ERR_SUCCESS:
         print "Can't connect"
         sys.exit(-1)
@@ -59,9 +64,10 @@ def start_nyamuk(server, topic, name, username, password):
             rc = ny.subscribe(topic, 0)
     
 if __name__ == '__main__':
+    print "len sys argv = ", len(sys.argv)
     if len(sys.argv) != 6:
-        print "cara pakai : python submq.py server topic user pass"
-        print "contoh     : python submq.py localhost tekno paijo paijo"
+        print "cara pakai : python pass-sub.py server topic name user pass"
+        print "contoh     : python pass-sub.py localhost tekno paijo paijo paijo"
         sys.exit(0)
         
     server = sys.argv[1]
