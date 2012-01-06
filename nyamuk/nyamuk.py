@@ -114,7 +114,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             print "Received UNSUBACK"
             sys.exit(-1)
         else:
-            self.logger.warning("Unknown protocol. Cmd = ", cmd)
+            self.logger.warning("Unknown protocol. Cmd = %d", cmd)
             return NC.ERR_PROTOCOL
     
     def connect(self, hostname = "localhost", port = 1883, username = None, password = None,clean_session = True):
