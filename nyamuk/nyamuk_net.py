@@ -62,3 +62,6 @@ def write(sock, payload):
         return -1, errno.ETIMEDOUT
     
     return len, None
+
+def setkeepalives(sock):
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE,1)

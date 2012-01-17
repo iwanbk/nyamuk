@@ -132,6 +132,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         
         #create socket
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        nyamuk_net.setkeepalives(self.sock)
         
         self.logger.info("Connecting to server ....%s",hostname)
         ret = nyamuk_net.connect(self.sock,(hostname, port))
