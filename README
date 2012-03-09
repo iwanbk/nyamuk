@@ -1,12 +1,11 @@
 =======================================
 Nyamuk
 =======================================
-M2M software based on mosquitto
+Python Mqtt client library based on libmosquitto
 
--------------
-Nyamuk Client
--------------
-Fitur:
+
+FEATURES:
+--------
 - CONNECT
 	with Username
 	with Password
@@ -16,10 +15,19 @@ Fitur:
 - QoS = 0
 - Topic satu level (non hierarchial)
 
+
 TODO:
+----
 - SSL
 - QoS 1
 - QoS 2
+- Proper Docstring
+
+
+INSTALL
+-------
+python setup.py install
+
 
 Test client:
 -------------
@@ -29,36 +37,7 @@ subscriber
 * nyamuk/pubnya.py
 publisher
 
----------------------------------------
-C TEST CLIENT
----------------------------------------
-Test Client dalam bahasa C ada di direktori client di source mosquitto
-Contoh :
-./mosquitto_pub -d -h server -m message -t topic
 
-Lihat bagian bawah untuk keterangan opsi program
-
-
-------------------------
-INSTALL MOSQUITTO SERVER
-------------------------
-wget -c http://mosquitto.org/files/source/mosquitto-0.14.2.tar.gz
-tar zxf mosquitto-0.14.2.tar.gz
-cd mosquitto-0.14.2
-make
-sudo make install
-
-menjalankan mosquitto server
---------------------------
-./src/mosquitto
-
-
---------------------------
-Keterangan Opsi Program
----------------------------
-server : server M2M = 209.141.62.44
-name   : nama dari client ini,harus unik
-topic  : room/topic/channel. bebas.
-		tapi subscriber dan publisher harus di topic yg sama untuk berkomunikasi
-		saat ini room yg saya pakai adalah : teknobridges
-message : pesan yg ingin dikirim oleh publisher
+LICENSE
+-------
+BSD License
