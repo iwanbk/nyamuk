@@ -13,7 +13,6 @@ FEATURES:
 - SUBSCRIBE
 - PINGREQ
 - QoS = 0
-- Topic satu level (non hierarchial)
 
 
 TODO:
