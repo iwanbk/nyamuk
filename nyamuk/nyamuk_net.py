@@ -32,18 +32,18 @@ def read(sock, count):
         str = sock.recv(count)
     except socket.error as (errno, str):
         print "socket.error. Errno = ", errno, " err msg = ", str
-        return -1, None, errno
+        return -1, errno
     except socket.herror as (errno, str):
         print "socket.error. Errno = ", errno, " err msg = ", str
-        return -1, None, errno
+        return -1, errno
     except socket.gaierror as (errno,str):
         print "socket.error. Errno = ", errno, " err msg = ", str
-        return -1, None, errno
+        return -1, errno
     except socket.timeout:
-        return -1, None, errno.ETIMEDOUT
+        return -1, errno.ETIMEDOUT
     
     ba = bytearray(str)
-    return len(ba),ba, None
+    return ba, None
 
 def write(sock, payload):
     """Write payload to socket."""
