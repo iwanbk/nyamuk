@@ -1,3 +1,7 @@
+'''
+Nyamuk subscriber example
+Copyright Iwan Budi Kusnanto
+'''
 import sys
 import logging
 
@@ -37,7 +41,7 @@ def start_nyamuk(server, name, topic):
     ny.on_message = on_message
     ny.on_connect = on_connect
     ny.on_subscribe = on_subscribe
-    #ny.keep_alive = 10 #default keepalive is 60
+    #ny.keep_alive = 10 #default keepalive is 120
     
     #rc = ny.connect(server, username = "satu", password = "satu")
     rc = ny.connect(server)
@@ -45,20 +49,17 @@ def start_nyamuk(server, name, topic):
         print "Can't connect"
         sys.exit(-1)
     
-    index = 0
+    rc = ny.subscribe(topic, 0)
     while rc == NC.ERR_SUCCESS:
         rc = ny.loop()
-        index += 1
-        if index == 3:
-            rc = ny.subscribe(topic, 0)
     
 if __name__ == '__main__':
     if len(sys.argv) != 4:
-        print "cara pakai : python submq.py server name topic"
-        print "contoh     : python submq.py localhost sub-iwan teknobridges"
+        print "usage    : python submq.py server client_id topic"
+        print "example  : python submq.py localhost sub-iwan teknobridges"
         sys.exit(0)
         
     server = sys.argv[1]
-    name = sys.argv[2]
+    client_id = sys.argv[2]
     topic = sys.argv[3]
-    start_nyamuk(server, name, topic)
+    start_nyamuk(server, client_id, topic)
