@@ -4,13 +4,9 @@ import logging
 from nyamuk import nyamuk
 from nyamuk import nyamuk_const as NC
 
-the_topic = ""
 def on_connect(obj, rc):
     if rc == 0:
         print "on_connect callback : connection success"
-        #print "subscribing to topic = ", the_topic
-        #mid = 1
-        #rc = obj.subscribe(mid, topic, 0)
     elif rc == 1:
         print "Connection refused : unacceptable protocol version"
     elif rc == 2:
@@ -41,8 +37,7 @@ def start_nyamuk(server, name, topic):
     ny.on_message = on_message
     ny.on_connect = on_connect
     ny.on_subscribe = on_subscribe
-    ny.keep_alive = 10
-    the_topic = topic
+    #ny.keep_alive = 10 #default keepalive is 60
     
     #rc = ny.connect(server, username = "satu", password = "satu")
     rc = ny.connect(server)
@@ -66,5 +61,4 @@ if __name__ == '__main__':
     server = sys.argv[1]
     name = sys.argv[2]
     topic = sys.argv[3]
-    the_topic = topic
     start_nyamuk(server, name, topic)
