@@ -1,8 +1,6 @@
 '''
-@author Iwan Budi Kusnanto
-'''
-'''
 MQTT Constanta
+@author Iwan Budi Kusnanto
 '''
 UNKNOWN_VAL = -1
 
@@ -16,7 +14,9 @@ CS_DISCONNECTING = 2
 
 #socket
 INVALID_SOCKET = -1
-KEEPALIVE_VAL = 60
+
+#keep alive timer, in seconds
+KEEPALIVE_VAL = 120
 
 #ERROR
 ERR_SUCCESS = 0
