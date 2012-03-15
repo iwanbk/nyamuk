@@ -1,7 +1,7 @@
 '''
 Nyamuk
-Python Mosquitto Client Library
-@author : Iwan Budi Kusnanto <iwan.b.kusnanto@gmail.com>
+Python MQTT Client Library
+Copyright 2012 Iwan Budi Kusnanto <iwan.b.kusnanto@gmail.com>
 '''
 import socket
 import select
@@ -42,34 +42,36 @@ class BaseNyamuk:
         
         self.will = None
         
-        
-        self.in_callback = False
         self.message_retry = NC.MESSAGE_RETRY
         self.last_retry_check = 0
         self.messages = None
         
         
-        #LOGGING:TODO
+        #LOGGING Option:TODO
         self.log_priorities = -1
         self.log_destinations = -1
-        
-        #callback
-        self.on_connect = None
-        self.on_disconnect = None
-        self.on_message = None
-        self.on_publish = None
-        self.on_subscribe = None
-        self.on_unsubscribe = None
         
         self.host = None
         self.port = 1883
         
         #hack var
         self.as_broker = False
+        
+        #event list
+        self.event_list = []
     
     def __del__(self):
         pass
-        
+    
+    def pop_event(self):
+        if len(self.event_list) > 0:
+            ev = self.event_list.pop(0)
+            return ev
+        return None
+    
+    def push_event(self, ev):
+        self.event_list.append(ev)
+    
     def mid_generate(self):
         self.last_mid += 1
         if self.last_mid == 0:
@@ -77,20 +79,12 @@ class BaseNyamuk:
         return self.last_mid
     
     def packet_queue(self, pkt):
-        '''
-        Enqueue packet to out_packet queue
-        '''
+        """Enqueue packet to out_packet queue."""
         
         pkt.pos = 0
         pkt.to_process = pkt.packet_length
         
         self.out_packet.append(pkt)
-        
-        #if self.in_callback == False:
-        #    return self.packet_write()
-        #else:
-        #    return NC.ERR_SUCCESS
-        
         return NC.ERR_SUCCESS
     
     def packet_write(self):
@@ -119,10 +113,12 @@ class BaseNyamuk:
                 else:
                     return NC.ERR_UNKNOWN, bytes_written
             
+            """
             if pkt.command & 0xF6 == NC.CMD_PUBLISH and self.on_publish is not None:
                 self.in_callback = True
                 self.on_publish(pkt.mid)
                 self.in_callback = False
+            """
             
             #next
             del self.out_packet[0]
@@ -142,7 +138,8 @@ class BaseNyamuk:
             return NC.ERR_NO_CONN
         
         if self.in_packet.command == 0:
-            readlen, ba,status = nyamuk_net.read(self.sock, 1)
+            ba,status = nyamuk_net.read(self.sock, 1)
+            readlen = len(ba)
             if readlen == 1:
                 bytes_received += 1
                 byte = ba[0]
@@ -166,7 +163,8 @@ class BaseNyamuk:
         if self.in_packet.have_remaining == False:
             loop_flag = True
             while loop_flag == True:
-                readlen, ba,status = nyamuk_net.read(self.sock, 1)
+                ba,status = nyamuk_net.read(self.sock, 1)
+                readlen = len(ba)
                 byte = ba[0]
                 if readlen == 1:
                     bytes_received += 1
@@ -192,7 +190,8 @@ class BaseNyamuk:
             self.in_packet.have_remaining = True
         
         if self.in_packet.to_process > 0:
-            readlen, ba, status = nyamuk_net.read(self.sock, self.in_packet.to_process)
+            ba, status = nyamuk_net.read(self.sock, self.in_packet.to_process)
+            readlen = len(ba)
             if readlen > 0:
                 bytes_received += readlen
                 for x in range(0, readlen):

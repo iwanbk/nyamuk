@@ -1,27 +1,35 @@
 '''
-MQTT Publisher Client
+Nyamuk publisher example
+copyright 2012 Iwan Budi Kusnanto
 '''
 import sys
 
 from nyamuk import nyamuk
 import nyamuk.nyamuk_const as NC
+from nyamuk import event
 
-def on_connect(nyamuk, rc):
-    if rc == 0:
-        print "on_connect callback : success"
+def handle_connack(ev):
+    print "CONNACK received"
+    rc = ev.ret_code
+    if rc == NC.CONNECT_ACCEPTED:
+        print "\tconnection success"
+    elif rc == 1:
+        print "\tConnection refused : unacceptable protocol version"
+    elif rc == 2:
+        print "\tConnection refused : identifier rejected"
+    elif rc == 3:
+        print "\tConnection refused : broker unavailable"
+    elif rc == 4:
+        print "\tConnection refused : bad username or password"
+    elif rc == 5:
+        print "\tConnection refused : not authorized"
     else:
-        print "on_connect callback : failed"
+        print "\tConnection refused : unknown reason = ", rc
     
-def on_message(msg):
-    print "--- message --"
-    print "topic : " + msg.topic
-    print "payload : " + msg.payload
-    
+    return rc
     
 def start_nyamuk(server, name, topic, payload):
     ny = nyamuk.Nyamuk(name)
-    ny.on_message = on_message
-    ny.on_connect = on_connect
     
     rc = ny.connect(server)
     if rc != NC.ERR_SUCCESS:
@@ -31,11 +39,15 @@ def start_nyamuk(server, name, topic, payload):
     index = 0
     
     while rc == NC.ERR_SUCCESS:
+        ev = ny.pop_event()
+        if ev != None:
+            if ev.type == NC.CMD_CONNACK:
+                ret_code = handle_connack(ev)
+                if ret_code == NC.CONNECT_ACCEPTED:
+                    print "publishing payload"
+                    ny.publish(topic, payload)
+                
         rc = ny.loop()
-        #print "index = ", index
-        index += 1
-        if index == 7:
-            rc = ny.publish(topic, payload)
     
 if __name__ == '__main__':
     if len(sys.argv) != 5:

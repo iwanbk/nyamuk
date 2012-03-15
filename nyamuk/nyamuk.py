@@ -1,3 +1,7 @@
+"""
+Nyamuk : Python MQTT Client library
+Copyright 2012 Iwan Budi Kusnanto
+"""
 import socket
 import select
 import time
@@ -9,11 +13,11 @@ import nyamuk_const as NC
 from mqtt_pkt import MqttPkt
 from nyamuk_msg import NyamukMsg, NyamukMsgAll
 import nyamuk_net
+import event
 
 class Nyamuk(base_nyamuk.BaseNyamuk):
     def __init__(self, id,log_level = logging.INFO):
         base_nyamuk.BaseNyamuk.__init__(self, id)
-        self.in_pub_msg = []    #incoming publish message
         
         #logging
         logger = logging.Logger(id)
@@ -31,6 +35,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         self.logger.addHandler(ch)
         
     def loop(self, timeout = 1):
+        """Main loop."""
         rlist = [self.sock]
         wlist = []
         if len(self.out_packet) > 0:
@@ -40,21 +45,13 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         
         if len(to_read) > 0:
             rc = self.loop_read()
-            
             if rc != NC.ERR_SUCCESS:
-                self.socket_close()
-                if self.state == NC.CS_DISCONNECTING:
-                    rc = NC.ERR_SUCCESS
-                    
-                if self.on_disconnect is not None:
-                    self.in_callback = True
-                    self.on_disconnect()
-                    self.in_callback = False
-                
                 return rc
         
         if len(to_write) > 0:
-            self.loop_write(to_write)
+            rc = self.loop_write(to_write)
+            if rc != NC.ERR_SUCCESS:
+                return rc
             
         self.loop_misc()
         
@@ -119,7 +116,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
     
     def connect(self, hostname = "localhost", port = 1883, username = None, password = None,clean_session = True):
         """Connect to server."""
-        self.hostnamne = hostname
+        self.hostname = hostname
         self.port = port
         self.username = username
         self.password = password
@@ -224,12 +221,10 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         if rc != NC.ERR_SUCCESS:
             return rc
         
-        if self.on_connect is not None:
-            self.in_callback = True
-            self.on_connect(self, result)
-            self.in_callback = False
+        ev = event.EventConnack(rc)
+        self.push_event(ev)
         
-        if result == 0:
+        if result == NC.CONNECT_ACCEPTED:
             self.state = NC.CS_CONNECTED
             return NC.ERR_SUCCESS
         
@@ -271,11 +266,8 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             
             i += 1
         
-        if self.on_subscribe is not None:
-            self.in_callback = True
-            #self.on_subscribe(self, mid, qos_count, granted_qos)
-            self.on_subscribe(self, mid, granted_qos)
-            self.in_callback = False
+        ev = event.EventSuback(mid, granted_qos)
+        self.push_event(ev)
         
         granted_qos = None
         
@@ -327,14 +319,11 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         qos = message.msg.qos
         
         if qos == 0:
-            if self.on_message is not None:
-                self.in_callback = True
-                self.on_message(self, message.msg)
-                self.in_callback = False
-            else:
-                self.in_pub_msg.append(message.msg)
+            ev = event.EventPublish(message.msg)
+            self.push_event(ev)
 
             return NC.ERR_SUCCESS
+        
         elif qos == 1 or qos == 2:
             self.logger.error("handle_publish. Unsupported QoS = 1 or QoS = 2")
             sys.exit(-1)
