@@ -30,10 +30,10 @@ python setup.py install
 
 Test client:
 -------------
-* nyamuk/subnya.py
+* test/subnya.py
 subscriber
 
-* nyamuk/pubnya.py
+* test/pubnya.py
 publisher
 
 
