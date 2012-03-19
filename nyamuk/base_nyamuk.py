@@ -24,7 +24,7 @@ class BaseNyamuk:
         
         self.address = ""
         self.keep_alive = NC.KEEPALIVE_VAL
-        self.clean_session = False
+        self.clean_session = 1
         self.state = NC.CS_NEW
         self.last_msg_in = time.time()
         self.last_msg_out = time.time()

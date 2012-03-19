@@ -114,7 +114,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             self.logger.warning("Unknown protocol. Cmd = %d", cmd)
             return NC.ERR_PROTOCOL
     
-    def connect(self, hostname = "localhost", port = 1883, username = None, password = None,clean_session = True):
+    def connect(self, hostname = "localhost", port = 1883, username = None, password = None,clean_session = 1):
         """Connect to server."""
         self.hostname = hostname
         self.port = port
