@@ -199,8 +199,8 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             print "PUBLISH:err inval"
             return NC.ERR_INVAL
         
-        #TODO
-        if payloadlen > 268435455:
+        #payloadlen <= 250MB
+        if payloadlen > (250 * 1024 * 1204):
             self.logger.error("PUBLISH:err payload len:%d", payloadlen)
             return NC.ERR_PAYLOAD_SIZE
         
