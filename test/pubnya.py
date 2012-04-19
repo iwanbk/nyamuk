@@ -28,10 +28,9 @@ def handle_connack(ev):
     
     return rc
     
-def start_nyamuk(server, name, topic, payload):
-    ny = nyamuk.Nyamuk(name)
-    
-    rc = ny.connect(server)
+def start_nyamuk(server, client_id, topic, payload):
+    ny = nyamuk.Nyamuk(client_id, server = server)
+    rc = ny.connect()
     if rc != NC.ERR_SUCCESS:
         print "Can't connect"
         sys.exit(-1)
@@ -51,8 +50,8 @@ def start_nyamuk(server, name, topic, payload):
     
 if __name__ == '__main__':
     if len(sys.argv) != 5:
-        print "cara pakai : python submq.py server name topic payload"
-        print "contoh     : python submq.py localhost sub-iwan teknobridges HaloMqtt"
+        print "usage   : python submq.py server name topic payload"
+        print "example : python submq.py localhost sub-iwan teknobridges HaloMqtt"
         sys.exit(0)
         
     server = sys.argv[1]

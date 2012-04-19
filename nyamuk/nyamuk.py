@@ -17,11 +17,14 @@ import event
 
 class Nyamuk(base_nyamuk.BaseNyamuk):
     """Nyamuk mqtt client class."""
-    def __init__(self, id, log_level = logging.INFO):
-        base_nyamuk.BaseNyamuk.__init__(self, id)
+    def __init__(self, client_id, username = None, password = None,
+                 server = "localhost", port = 1883, keepalive = NC.KEEPALIVE_VAL,
+                 log_level = logging.DEBUG):
+        base_nyamuk.BaseNyamuk.__init__(self, client_id, username, password,
+                                        server, port, keepalive)
         
         #logging
-        self.logger = logging.getLogger(id)
+        self.logger = logging.getLogger(client_id)
         self.logger.setLevel(log_level)
         
         ch = logging.StreamHandler()
@@ -117,13 +120,8 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             self.logger.warning("Unknown protocol. Cmd = %d", cmd)
             return NC.ERR_PROTOCOL
     
-    def connect(self, hostname = "localhost", port = 1883, username = None, password = None, clean_session = 1):
+    def connect(self, clean_session = 1):
         """Connect to server."""
-        self.hostname = hostname
-        self.port = port
-        self.username = username
-        self.password = password
-        self.port = port
         self.clean_session = clean_session
         
         #CONNECT packet
@@ -134,8 +132,8 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         nyamuk_net.setkeepalives(self.sock)
         
-        self.logger.info("Connecting to server ....%s", hostname)
-        err = nyamuk_net.connect(self.sock,(hostname, port))
+        self.logger.info("Connecting to server ....%s", self.server)
+        err = nyamuk_net.connect(self.sock,(self.server, self.port))
         
         if err != None:
             self.logger.error(err[1])
@@ -205,7 +203,6 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             return NC.ERR_PAYLOAD_SIZE
         
         #wildcard check : TODO
-        
         mid = self.mid_generate()
         
         if qos == 0:
@@ -300,7 +297,6 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             return ret
         
         #fix_sub_topic TODO
-        
         if message.msg.qos > 0:
             ret, word = self.in_packet.read_uint16()
             message.msg.mid = word

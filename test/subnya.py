@@ -41,10 +41,9 @@ def handle_suback(ev):
     print "\tQOS Count = ", len(ev.granted_qos)
     print "\tMID = ", ev.mid
         
-def start_nyamuk(server, name, topic):
-    ny = nyamuk.Nyamuk(name, logging.DEBUG)
-    #rc = ny.connect(server, username = "satu", password = "satu")
-    rc = ny.connect(server)
+def start_nyamuk(server, client_id, topic, username = None, password = None):
+    ny = nyamuk.Nyamuk(client_id, username, password, server)
+    rc = ny.connect()
     if rc != NC.ERR_SUCCESS:
         print "Can't connect"
         sys.exit(-1)

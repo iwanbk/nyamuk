@@ -13,16 +13,17 @@ import nyamuk_net
 MQTTCONNECT = 16# 1 << 4
 class BaseNyamuk:
     """Base class of nyamuk."""
-    def __init__(self, client_id = None, username = None, password = None, hostname = None, port = None):
+    def __init__(self, client_id, username, password,
+                 server, port, keepalive):
         ''' Constructor '''
-        self.id = client_id
+        self.client_id = client_id
         self.username = username
         self.password = password
-        self.hostname = hostname
+        self.server = server
         self.port = port
         
         self.address = ""
-        self.keep_alive = NC.KEEPALIVE_VAL
+        self.keep_alive = keepalive
         self.clean_session = 1
         self.state = NC.CS_NEW
         self.last_msg_in = time.time()

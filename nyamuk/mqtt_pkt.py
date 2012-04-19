@@ -102,7 +102,7 @@ class MqttPkt:
         byte = 0
         
         #payload len
-        payload_len = 2 + len(nyamuk.id)
+        payload_len = 2 + len(nyamuk.client_id)
         if nyamuk.will is not None:
             will = 1
             payload_len = payload_len + 2 + len(nyamuk.will.topic) + 2 + nyamuk.will.payloadlen
@@ -136,7 +136,7 @@ class MqttPkt:
         self.write_byte(byte)
         self.write_uint16(keepalive)
         #payload
-        self.write_string(nyamuk.id)
+        self.write_string(nyamuk.client_id)
         
         if will:
             #TODO
