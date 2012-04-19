@@ -3,24 +3,23 @@ Nyamuk
 Python MQTT Client Library
 Copyright 2012 Iwan Budi Kusnanto <iwan.b.kusnanto@gmail.com>
 '''
-import socket
-import select
 import time
-import sys
 import errno
 
 from mqtt_pkt import MqttPkt
 import nyamuk_const as NC
 import nyamuk_net
-from nyamuk_msg import NyamukMsg, NyamukMsgAll
 
 MQTTCONNECT = 16# 1 << 4
 class BaseNyamuk:
-    def __init__(self, id = None, username = None, password = None, WITH_BROKER = False):
+    """Base class of nyamuk."""
+    def __init__(self, client_id = None, username = None, password = None, hostname = None, port = None):
         ''' Constructor '''
-        self.id = id
-        self.username = None
-        self.password = None
+        self.id = client_id
+        self.username = username
+        self.password = password
+        self.hostname = hostname
+        self.port = port
         
         self.address = ""
         self.keep_alive = NC.KEEPALIVE_VAL
@@ -46,6 +45,7 @@ class BaseNyamuk:
         self.last_retry_check = 0
         self.messages = None
         
+        self.bridge = None
         
         #LOGGING Option:TODO
         self.log_priorities = -1
@@ -59,20 +59,20 @@ class BaseNyamuk:
         
         #event list
         self.event_list = []
-    
-    def __del__(self):
-        pass
-    
+        
     def pop_event(self):
+        """Pop an event from event_list."""
         if len(self.event_list) > 0:
-            ev = self.event_list.pop(0)
-            return ev
+            evt = self.event_list.pop(0)
+            return evt
         return None
     
-    def push_event(self, ev):
-        self.event_list.append(ev)
+    def push_event(self, evt):
+        """Add an event to event_list."""
+        self.event_list.append(evt)
     
     def mid_generate(self):
+        """Generate mid. TODO : check."""
         self.last_mid += 1
         if self.last_mid == 0:
             self.last_mid += 1
@@ -138,14 +138,14 @@ class BaseNyamuk:
             return NC.ERR_NO_CONN
         
         if self.in_packet.command == 0:
-            ba,status = nyamuk_net.read(self.sock, 1)
-            readlen = len(ba)
+            ba_data, status = nyamuk_net.read(self.sock, 1)
+            readlen = len(ba_data)
             if readlen == 1:
                 bytes_received += 1
-                byte = ba[0]
+                byte = ba_data[0]
                 self.in_packet.command = byte
                 
-                if self.as_broker == True:
+                if self.as_broker:
                     if self.bridge is None and self.state == NC.CS_NEW and (byte & 0xF0) != NC.CMD_CONNECT:
                         print "RETURN ERR_PROTOCOL"
                         return NC.ERR_PROTOCOL, bytes_received
@@ -160,12 +160,12 @@ class BaseNyamuk:
                     else:
                         return NC.ERR_UNKNOWN, bytes_received
         
-        if self.in_packet.have_remaining == False:
+        if not self.in_packet.have_remaining:
             loop_flag = True
-            while loop_flag == True:
-                ba,status = nyamuk_net.read(self.sock, 1)
-                readlen = len(ba)
-                byte = ba[0]
+            while loop_flag:
+                ba_data, status = nyamuk_net.read(self.sock, 1)
+                readlen = len(ba_data)
+                byte = ba_data[0]
                 if readlen == 1:
                     bytes_received += 1
                     self.in_packet.remaining_count += 1
@@ -190,12 +190,12 @@ class BaseNyamuk:
             self.in_packet.have_remaining = True
         
         if self.in_packet.to_process > 0:
-            ba, status = nyamuk_net.read(self.sock, self.in_packet.to_process)
-            readlen = len(ba)
+            ba_data, status = nyamuk_net.read(self.sock, self.in_packet.to_process)
+            readlen = len(ba_data)
             if readlen > 0:
                 bytes_received += readlen
-                for x in range(0, readlen):
-                    self.in_packet.payload[self.in_packet.pos] = ba[x]
+                for idx in xrange(0, readlen):
+                    self.in_packet.payload[self.in_packet.pos] = ba_data[idx]
                     self.in_packet.pos += 1
                     self.in_packet.to_process -= 1
             else:
@@ -210,13 +210,13 @@ class BaseNyamuk:
         #all data for this packet is read
         self.in_packet.pos = 0
         
-        rc = self.packet_handle()
+        ret = self.packet_handle()
         
         self.in_packet.packet_cleanup()
         
         self.last_msg_in = time.time()
         
-        return rc, bytes_received
+        return ret, bytes_received
                 
     def socket_close(self):
         """Close our socket."""
@@ -237,9 +237,9 @@ class BaseNyamuk:
         pkt.command = NC.CMD_PUBLISH | ((dup & 0x1) << 3) | (qos << 1) | retain
         pkt.remaining_length = packetlen
         
-        rc = pkt.alloc()
-        if rc != NC.ERR_SUCCESS:
-            return rc, None
+        ret = pkt.alloc()
+        if ret != NC.ERR_SUCCESS:
+            return ret, None
         
         #variable header : Topic String
         pkt.write_string(topic)
@@ -254,13 +254,14 @@ class BaseNyamuk:
         return NC.ERR_SUCCESS, pkt
     
     def send_simple_command(self, cmd):
+        """Send simple mqtt commands."""
         pkt = MqttPkt()
         
         pkt.command = cmd
         pkt.remaining_length = 0
         
-        rc = pkt.alloc()
-        if rc != NC.ERR_SUCCESS:
-            return rc
+        ret = pkt.alloc()
+        if ret != NC.ERR_SUCCESS:
+            return ret
         
         return self.packet_queue(pkt)
