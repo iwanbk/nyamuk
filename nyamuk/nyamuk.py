@@ -132,10 +132,11 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         nyamuk_net.setkeepalives(self.sock)
         
         self.logger.info("Connecting to server ....%s",hostname)
-        ret = nyamuk_net.connect(self.sock,(hostname, port))
+        err = nyamuk_net.connect(self.sock,(hostname, port))
         
-        if ret != 0:
-            return NC.ERR_NO_CONN
+        if err != None:
+            self.logger.error(err[1])
+            return NC.ERR_UNKNOWN
         
         #set to nonblock
         self.sock.setblocking(0)

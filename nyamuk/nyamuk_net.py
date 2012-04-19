@@ -1,67 +1,65 @@
+"""
+Nyamuk networking module.
+Copyright(c) 2012 Iwan Budi Kusnanto
+"""
 import socket
-import errno
-
-import nyamuk_const as NC
 
 def MOSQ_MSB(A):
+    """get most significant byte."""
     return (( A & 0xFF00) >> 8)
     
 def MOSQ_LSB(A):
+    """get less significant byte."""
     return (A & 0x00FF)
 
 def connect(sock, addr):
+    """Connect to some addr."""
     try:
-        ret = sock.connect(addr)
-    except socket.error as (errno, str):
-        print "socket.error. Errno = ", errno, " err msg = ", str
-        return -1, errno
-    except socket.herror as (errno, str):
-        print "socket.error. Errno = ", errno, " err msg = ", str
-        return -1, errno
-    except socket.gaierror as (errno,str):
-        print "socket.error. Errno = ", errno, " err msg = ", str
-        return -1, errno
+        sock.connect(addr)
+    except socket.error as (_, msg):
+        return (socket.error, msg)
+    except socket.herror as (_, msg):
+        return (socket.herror, str)
+    except socket.gaierror as (_, msg):
+        return (socket.gaierror, msg)
     except socket.timeout:
-        return -1, errno.ETIMEDOUT
+        return (socket.timeout, "timeout")
     
-    return 0
+    return None
     
 def read(sock, count):
-    """Read count byte from socket."""
+    """Read from socket and return it's byte array representation.
+    count = number of bytes to read
+    """
     try:
-        str = sock.recv(count)
-    except socket.error as (errno, str):
-        print "socket.error. Errno = ", errno, " err msg = ", str
-        return -1, errno
-    except socket.herror as (errno, str):
-        print "socket.error. Errno = ", errno, " err msg = ", str
-        return -1, errno
-    except socket.gaierror as (errno,str):
-        print "socket.error. Errno = ", errno, " err msg = ", str
-        return -1, errno
+        data = sock.recv(count)
+    except socket.error as (_, msg):
+        return data, (socket.error, msg)
+    except socket.herror as (_, msg):
+        return data, (socket.error, msg)
+    except socket.gaierror as (_, msg):
+        return data, (socket.gaierror, msg)
     except socket.timeout:
-        return -1, errno.ETIMEDOUT
+        return data, (socket.timeout, "timeout")
     
-    ba = bytearray(str)
-    return ba, None
+    ba_data = bytearray(data)
+    return ba_data, None
 
 def write(sock, payload):
     """Write payload to socket."""
     try:
-        len = sock.send(payload)
-    except socket.error as (errno, str):
-        print "socket.error. Errno = ", errno, " err msg = ", str
-        return -1, errno
-    except socket.herror as (errno, str):
-        print "socket.herror. Errno = ", errno, " err msg = ", str
-        return -1, errno
-    except socket.gaierror as (errno,str):
-        print "socket.gaierror. Errno = ", errno, " err msg = ", str
-        return -1, errno
+        length = sock.send(payload)
+    except socket.error as (_, msg):
+        return length, (socket.error, msg)
+    except socket.herror as (_, msg):
+        return length, (socket.error, msg)
+    except socket.gaierror as (_, msg):
+        return length, (socket.gaierror, msg)
     except socket.timeout:
-        return -1, errno.ETIMEDOUT
+        return length, (socket.timeout, "timeout")
     
-    return len, None
+    return length, None
 
 def setkeepalives(sock):
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE,1)
+    """set sock to be keepalive socket."""
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
