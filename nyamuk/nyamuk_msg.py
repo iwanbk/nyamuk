@@ -1,8 +1,12 @@
+"""
+Copyright(c)2012 Iwan Budi Kusnanto
+"""
 import time
 
 import nyamuk_const as NC
 
 class NyamukMsg:
+    """Nyamuk message."""
     def __init__(self):
         self.mid = 0
         self.topic = None

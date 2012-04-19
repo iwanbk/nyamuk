@@ -1,7 +1,10 @@
+"""Nyamuk event."""
 import nyamuk_const as NC
+
 class BaseEvent:
-    def __init__(self, type):
-        self.type = type
+    """Event Base Class."""
+    def __init__(self, tipe):
+        self.type = tipe
 
 class EventConnack(BaseEvent):
     """CONNACK received."""

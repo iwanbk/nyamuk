@@ -8,6 +8,7 @@ import nyamuk_const as NC
 import nyamuk_net
 
 class MqttPkt:
+    """An mqtt packet."""
     def __init__(self):
         self.command = 0
         self.have_remaining = False
@@ -33,7 +34,7 @@ class MqttPkt:
         print "command = ", self.command
         print "have_remaining = ", self.have_remaining
         print "remaining_count = ", self.remaining_count
-        print "mid = ",self.mid
+        print "mid = ", self.mid
         print "remaining_mult = ", self.remaining_mult
         print "remaining_length = ", self.remaining_length
         print "packet_length = ", self.packet_length
@@ -55,7 +56,7 @@ class MqttPkt:
         loop_flag = True
         
         #self.dump()
-        while loop_flag == True:
+        while loop_flag:
             byte = remaining_length % 128
             remaining_length = remaining_length / 128
             
@@ -95,7 +96,7 @@ class MqttPkt:
         self.to_process = 0
         self.pos = 0
     
-    def connect_build(self, nyamuk, keepalive, clean_session,retain = 0, dup = 0):
+    def connect_build(self, nyamuk, keepalive, clean_session, retain = 0, dup = 0):
         """Build packet for CONNECT command."""
         will = 0
         byte = 0
@@ -119,7 +120,7 @@ class MqttPkt:
             return rc
          
         #var header
-        self.write_string(NC.PROTOCOL_NAME, len(NC.PROTOCOL_NAME))
+        self.write_string(NC.PROTOCOL_NAME)
         self.write_byte(NC.PROTOCOL_VERSION)
         
         byte = (clean_session & 0x1) << 1
@@ -135,55 +136,44 @@ class MqttPkt:
         self.write_byte(byte)
         self.write_uint16(keepalive)
         #payload
-        self.write_string(nyamuk.id, len(nyamuk.id))
+        self.write_string(nyamuk.id)
         
         if will:
             #TODO
             sys.exit(-1)
         if nyamuk.username is not None:
-            self.write_string(nyamuk.username, len(nyamuk.username))
+            self.write_string(nyamuk.username)
             if nyamuk.password is not None:
-                self.write_string(nyamuk.password, len(nyamuk.password))
+                self.write_string(nyamuk.password)
             
         nyamuk.keep_alive = keepalive
         
         return NC.ERR_SUCCESS
     
-    def write_string(self, str, length):
-        '''
-        char *str
-        uint16_t length
-        '''
-        self.write_uint16(length)
-        self.write_bytes(str, length)
+    def write_string(self, string):
+        """Write a string to this packet."""
+        self.write_uint16(len(string))
+        self.write_bytes(string, len(string))
         
     def write_uint16(self, word):
-        '''
-        uint16_t word
-        '''
+        """Write 2 bytes."""
         self.write_byte(nyamuk_net.MOSQ_MSB(word))
         self.write_byte(nyamuk_net.MOSQ_LSB(word))
         
     def write_byte(self, byte):
-        '''
-        uint8_t byte
-        '''
+        """Write one byte."""
         self.payload[self.pos] = byte
         self.pos = self.pos + 1
     
-    def write_bytes(self, bytes, count):
-        #memcpy(&(packet->payload[packet->pos]), bytes, count);
-        
-        #print "count = ", count
-        #print "len(payload) = ", len(self.payload) ,"#self.pos = ", self.pos, " #count=", count, " #len(bytes)=", len(bytes)
-        for pos in range(0, count):
-            #print "pos = ",pos
-            #print "type payload = ", type(self.payload), " #type bytes = ", type(bytes), " #typebytes.pos=", type(bytes[pos])
-            self.payload[self.pos + pos] = bytes[pos]
+    def write_bytes(self, data, n):
+        """Write n number of bytes to this packet."""
+        for pos in xrange(0, n):
+            self.payload[self.pos + pos] = data[pos]
             
-        self.pos += count
+        self.pos += n
     
     def read_byte(self):
+        """Read a byte."""
         if self.pos + 1 > self.remaining_length:
             return NC.ERR_PROTOCOL, None
         
@@ -193,6 +183,7 @@ class MqttPkt:
         return NC.ERR_SUCCESS, byte
     
     def read_uint16(self):
+        """Read 2 bytes."""
         if self.pos + 2 > self.remaining_length:
             return NC.ERR_PROTOCOL
         msb = self.payload[self.pos]
@@ -205,31 +196,33 @@ class MqttPkt:
         return NC.ERR_SUCCESS, word
     
     def read_bytes(self, count):
+        """Read count number of bytes."""
         if self.pos + count > self.remaining_length:
             return NC.ERR_PROTOCOL, None
         
         ba = bytearray(count)
-        for x in range(0, count):
+        for x in xrange(0, count):
             ba[x] = self.payload[self.pos]
             self.pos += 1
         
         return NC.ERR_SUCCESS, ba
     
     def read_string(self):
-        rc, len = self.read_uint16()
+        """Read string."""
+        rc, length = self.read_uint16()
         
         if rc != NC.ERR_SUCCESS:
             return rc, None
         
-        if self.pos + len > self.remaining_length:
+        if self.pos + length > self.remaining_length:
             return NC.ERR_PROTOCOL, None
         
-        ba = bytearray(len)
+        ba = bytearray(length)
         if ba is None:
             return NC.ERR_NO_MEM, None
         
-        for x in range(0, len):
+        for x in xrange(0, length):
             ba[x] = self.payload[self.pos]
             self.pos += 1
         
-        return NC.ERR_SUCCESS, ba 
+        return NC.ERR_SUCCESS, ba

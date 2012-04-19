@@ -180,7 +180,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         pkt.write_uint16(mid)
         
         #payload
-        pkt.write_string(topic, len(topic))
+        pkt.write_string(topic)
         pkt.write_byte(qos)
         
         return self.packet_queue(pkt)

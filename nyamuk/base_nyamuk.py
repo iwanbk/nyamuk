@@ -242,7 +242,7 @@ class BaseNyamuk:
             return rc, None
         
         #variable header : Topic String
-        pkt.write_string(topic, len(topic))
+        pkt.write_string(topic)
         
         if qos > 0:
             pkt.write_uint16(mid)
