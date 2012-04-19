@@ -27,6 +27,10 @@ INSTALL
 -------
 python setup.py install
 
+or
+
+pip install nyamuk
+
 
 Test client:
 -------------
