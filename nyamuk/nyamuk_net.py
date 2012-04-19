@@ -50,13 +50,13 @@ def write(sock, payload):
     try:
         length = sock.send(payload)
     except socket.error as (_, msg):
-        return length, (socket.error, msg)
+        return -1, (socket.error, msg)
     except socket.herror as (_, msg):
-        return length, (socket.error, msg)
+        return -1, (socket.error, msg)
     except socket.gaierror as (_, msg):
-        return length, (socket.gaierror, msg)
+        return -1, (socket.gaierror, msg)
     except socket.timeout:
-        return length, (socket.timeout, "timeout")
+        return -1, (socket.timeout, "timeout")
     
     return length, None
 
