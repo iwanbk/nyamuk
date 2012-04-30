@@ -3,6 +3,7 @@ Nyamuk networking module.
 Copyright(c) 2012 Iwan Budi Kusnanto
 """
 import socket
+import errno
 
 def MOSQ_MSB(A):
     """get most significant byte."""
@@ -33,17 +34,21 @@ def read(sock, count):
     """
     try:
         data = sock.recv(count)
-    except socket.error as (_, msg):
-        return data, (socket.error, msg)
-    except socket.herror as (_, msg):
-        return data, (socket.error, msg)
-    except socket.gaierror as (_, msg):
-        return data, (socket.gaierror, msg)
+    except socket.error as (errnum, errmsg):
+        return data, errnum, errmsg
+    except socket.herror as (errnum, errmsg):
+        return data, errnum, errmsg
+    except socket.gaierror as (errnum, errmsg):
+        return data, errnum, errmsg
     except socket.timeout:
-        return data, (socket.timeout, "timeout")
+        return data, errno.ETIMEDOUT, "Connection timed out"
     
     ba_data = bytearray(data)
-    return ba_data, None
+    
+    if len(ba_data) == 0:
+        return ba_data, 0, "Connection closed"
+    
+    return ba_data, 0, ""
 
 def write(sock, payload):
     """Write payload to socket."""

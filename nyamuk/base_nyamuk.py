@@ -9,6 +9,7 @@ import errno
 from mqtt_pkt import MqttPkt
 import nyamuk_const as NC
 import nyamuk_net
+import event
 
 MQTTCONNECT = 16# 1 << 4
 class BaseNyamuk:
@@ -139,9 +140,8 @@ class BaseNyamuk:
             return NC.ERR_NO_CONN
         
         if self.in_packet.command == 0:
-            ba_data, status = nyamuk_net.read(self.sock, 1)
-            readlen = len(ba_data)
-            if readlen == 1:
+            ba_data, errnum, errmsg = nyamuk_net.read(self.sock, 1)
+            if errnum == 0 and len(ba_data) == 1:
                 bytes_received += 1
                 byte = ba_data[0]
                 self.in_packet.command = byte
@@ -151,23 +151,22 @@ class BaseNyamuk:
                         print "RETURN ERR_PROTOCOL"
                         return NC.ERR_PROTOCOL, bytes_received
             else:
-                if readlen == 0:
-                    return NC.ERR_CONN_LOST, bytes_received
-                if status == errno.EAGAIN or status == errno.EWOULDBLOCK:
+                if errnum == errno.EAGAIN or errnum == errno.EWOULDBLOCK:
                     return NC.ERR_SUCCESS, bytes_received
+                elif errnum == 0 and len(ba_data) == 0 or errnum == errno.ECONNRESET:
+                    return NC.ERR_CONN_LOST, bytes_received
                 else:
-                    if status == errno.ECONNRESET:
-                        return NC.ERR_CONN_LOST, bytes_received
-                    else:
-                        return NC.ERR_UNKNOWN, bytes_received
+                    evt = event.EventNeterr(errnum, errmsg)
+                    self.push_event(evt)
+                    return NC.ERR_UNKNOWN, bytes_received
         
         if not self.in_packet.have_remaining:
             loop_flag = True
             while loop_flag:
-                ba_data, status = nyamuk_net.read(self.sock, 1)
-                readlen = len(ba_data)
-                byte = ba_data[0]
-                if readlen == 1:
+                ba_data, errnum, errmsg = nyamuk_net.read(self.sock, 1)
+                
+                if errnum == 0 and len(ba_data) == 1:       
+                    byte = ba_data[0]
                     bytes_received += 1
                     self.in_packet.remaining_count += 1
                     if self.in_packet.remaining_count > 4:
@@ -176,8 +175,14 @@ class BaseNyamuk:
                     self.in_packet.remaining_length += (byte & 127) * self.in_packet.remaining_mult
                     self.in_packet.remaining_mult *= 128
                 else:
-                    if readlen == 0:
+                    if errnum == errno.EAGAIN or errnum == errno.EWOULDBLOCK:
+                        return NC.ERR_SUCCESS, bytes_received
+                    elif errnum == 0 and len(ba_data) == 0 or errnum == errno.ECONNRESET:
                         return NC.ERR_CONN_LOST, bytes_received
+                    else:
+                        evt = event.EventNeterr(errnum, errmsg)
+                        self.push_event(evt)
+                        return NC.ERR_UNKNOWN, bytes_received
                 
                 if (byte & 128) == 0:
                     loop_flag = False
@@ -191,23 +196,24 @@ class BaseNyamuk:
             self.in_packet.have_remaining = True
         
         if self.in_packet.to_process > 0:
-            ba_data, status = nyamuk_net.read(self.sock, self.in_packet.to_process)
-            readlen = len(ba_data)
-            if readlen > 0:
+            ba_data, errnum, errmsg = nyamuk_net.read(self.sock, self.in_packet.to_process)
+            if errnum == 0 and len(ba_data) > 0:
+                readlen = len(ba_data)
                 bytes_received += readlen
                 for idx in xrange(0, readlen):
                     self.in_packet.payload[self.in_packet.pos] = ba_data[idx]
                     self.in_packet.pos += 1
                     self.in_packet.to_process -= 1
             else:
-                if status == errno.EAGAIN or status == errno.EWOULDBLOCK:
-                    return NC.ERR_SUCCESS, bytes_received
+                if errnum == errno.EAGAIN or errnum == errno.EWOULDBLOCK:
+                        return NC.ERR_SUCCESS, bytes_received
+                elif errnum == 0 and len(ba_data) == 0 or errnum == errno.ECONNRESET:
+                    return NC.ERR_CONN_LOST, bytes_received
                 else:
-                    if status == errno.ECONNRESET:
-                        return NC.ERR_CONN_LOST, bytes_received
-                    else:
-                        return NC.ERR_UNKNOWN, bytes_received
-        
+                    evt = event.EventNeterr(errnum, errmsg)
+                    self.push_event(evt)
+                    return NC.ERR_UNKNOWN, bytes_received
+
         #all data for this packet is read
         self.in_packet.pos = 0
         
