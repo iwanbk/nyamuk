@@ -59,7 +59,14 @@ def start_nyamuk(server, client_id, topic, username = None, password = None):
                 handle_publish(ev)
             elif ev.type == NC.CMD_SUBACK:
                 handle_suback(ev)
+            elif ev.type == EV_NET_ERR:
+                print "Network Error. Msg = ", ev.msg
+                sys.exit(-1)
         rc = ny.loop()
+        if rc == NC.ERR_CONN_LOST:
+            ny.logger.fatal("Connection to server closed")
+            
+    ny.logger.info("subscriber exited")
     
 if __name__ == '__main__':
     if len(sys.argv) != 4:
