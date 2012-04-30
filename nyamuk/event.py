@@ -1,5 +1,15 @@
 """Nyamuk event."""
+import socket
+
 import nyamuk_const as NC
+
+#mqtt event
+EV_CONNACK = NC.CMD_CONNACK
+EV_PUBLISH = NC.CMD_PUBLISH
+EV_SUBACK = NC.CMD_SUBACK
+
+#non mqtt event
+EV_NET_ERR = 1000
 
 class BaseEvent:
     """Event Base Class."""
@@ -24,3 +34,10 @@ class EventSuback(BaseEvent):
         BaseEvent.__init__(self, NC.CMD_SUBACK)
         self.mid = mid
         self.granted_qos = granted_qos
+
+class EventNeterr(BaseEvent):
+    """Network error event."""
+    def __init__(self, errnum, msg):
+        BaseEvent.__init__(self, EV_NET_ERR)
+        self.errnum = errnum
+        self.msg = msg
