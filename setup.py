@@ -7,7 +7,7 @@ setup(
     author = 'Iwan Budi Kusnanto',
     url = 'https://github.com/iwanbk/nyamuk',
     author_email ='iwan.b.kusnanto@gmail.com',
-    version ='0.1',
+    version ='0.1.1',
     install_requires = [],
     packages = ['nyamuk'],
     name = 'nyamuk',
