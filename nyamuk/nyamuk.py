@@ -344,3 +344,6 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             return ret
         
         return self.packet_queue(pkt)
+    """ destructor """
+    def __del__(self):
+        self.logger.handlers=[]
