@@ -65,3 +65,8 @@ class EventNeterr(BaseEvent):
         BaseEvent.__init__(self, EV_NET_ERR)
         self.errnum = errnum
         self.msg = msg
+
+class EventPingResp(BaseEvent):
+    """PINGRESP received."""
+    def __init__(self):
+        BaseEvent.__init__(self, NC.CMD_PINGRESP)
