@@ -6,6 +6,7 @@ import socket
 import select
 import time
 import sys
+import ssl
 import logging
 
 import base_nyamuk
@@ -18,10 +19,16 @@ import event
 class Nyamuk(base_nyamuk.BaseNyamuk):
     """Nyamuk mqtt client class."""
     def __init__(self, client_id, username = None, password = None,
-                 server = "localhost", port = 1883, keepalive = NC.KEEPALIVE_VAL,
-                 log_level = logging.DEBUG):
+                 server = "localhost", port = None, keepalive = NC.KEEPALIVE_VAL,
+                 log_level = logging.DEBUG,
+                 ssl = False, ssl_opts=[]):
+
+        # default MQTT port
+        if port is None:
+            port = 8883 if ssl else 1883
+
         base_nyamuk.BaseNyamuk.__init__(self, client_id, username, password,
-                                        server, port, keepalive)
+                                        server, port, keepalive, ssl, ssl_opts)
         
         #logging
         self.logger = logging.getLogger(client_id)
@@ -130,10 +137,21 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         
         #create socket
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        if self.ssl:
+            opts = {
+                'do_handshake_on_connect': True,
+                'ssl_version': ssl.PROTOCOL_TLSv1
+            }
+            opts.update(self.ssl_opts)
+            #print opts, self.port
+
+            self.sock = ssl.wrap_socket(self.sock, **opts)
+
         nyamuk_net.setkeepalives(self.sock)
         
         self.logger.info("Connecting to server ....%s", self.server)
         err = nyamuk_net.connect(self.sock,(self.server, self.port))
+        #print self.sock.cipher()
         
         if err != None:
             self.logger.error(err[1])

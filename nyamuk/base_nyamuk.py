@@ -15,13 +15,15 @@ MQTTCONNECT = 16# 1 << 4
 class BaseNyamuk:
     """Base class of nyamuk."""
     def __init__(self, client_id, username, password,
-                 server, port, keepalive):
+                 server, port, keepalive, ssl, ssl_opts):
         ''' Constructor '''
         self.client_id = client_id
         self.username = username
         self.password = password
         self.server = server
         self.port = port
+        self.ssl = ssl
+        self.ssl_opts = ssl_opts
         
         self.address = ""
         self.keep_alive = keepalive
@@ -54,7 +56,6 @@ class BaseNyamuk:
         self.log_destinations = -1
         
         self.host = None
-        self.port = 1883
         
         #hack var
         self.as_broker = False
