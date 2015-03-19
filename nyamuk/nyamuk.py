@@ -152,6 +152,8 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         self.state = NC.CS_DISCONNECTING
         
         ret = self.send_disconnect()
+        ret2, bytes_written = self.packet_write()
+
         self.socket_close()
         return ret
     
