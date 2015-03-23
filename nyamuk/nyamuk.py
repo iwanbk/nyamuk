@@ -145,7 +145,11 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             opts.update(self.ssl_opts)
             #print opts, self.port
 
-            self.sock = ssl.wrap_socket(self.sock, **opts)
+            try:
+                self.sock = ssl.wrap_socket(self.sock, **opts)
+            except Exception, e:
+                self.logger.error("failed to initiate SSL connection: {0}".format(e))
+                return NC.ERR_UNKNOWN
 
         nyamuk_net.setkeepalives(self.sock)
         
