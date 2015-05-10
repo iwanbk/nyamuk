@@ -222,7 +222,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         if ret != NC.ERR_SUCCESS:
             return ret
         
-        evt = event.EventConnack(ret)
+        evt = event.EventConnack(result)
         self.push_event(evt)
         
         if result == NC.CONNECT_ACCEPTED:
