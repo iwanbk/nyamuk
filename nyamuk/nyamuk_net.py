@@ -2,6 +2,7 @@
 Nyamuk networking module.
 Copyright(c) 2012 Iwan Budi Kusnanto
 """
+import ssl
 import socket
 import errno
 
@@ -17,8 +18,10 @@ def connect(sock, addr):
     """Connect to some addr."""
     try:
         sock.connect(addr)
-    except socket.error as (_, msg):
-        return (socket.error, msg)
+    except ssl.SSLError as e:
+        return (ssl.SSLError, e.strerror if e.strerror else e.message)
+    except socket.error as e:
+        return (socket.error, e.strerror if e.strerror else e.message)
     except socket.herror as (_, msg):
         return (socket.herror, str)
     except socket.gaierror as (_, msg):
@@ -34,6 +37,8 @@ def read(sock, count):
     """
     try:
         data = sock.recv(count)
+    except ssl.SSLError as e:
+        return data, e.errno, e.strerror if strerror else e.message
     except socket.error as (errnum, errmsg):
         return data, errnum, errmsg
     except socket.herror as (errnum, errmsg):
@@ -54,6 +59,8 @@ def write(sock, payload):
     """Write payload to socket."""
     try:
         length = sock.send(payload)
+    except ssl.SSLError as e:
+        return -1, (ssl.SSLError, e.strerror if strerror else e.message)
     except socket.error as (_, msg):
         return -1, (socket.error, msg)
     except socket.herror as (_, msg):
