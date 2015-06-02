@@ -6,6 +6,7 @@ import socket
 import select
 import time
 import sys
+import ssl
 import logging
 
 import base_nyamuk
@@ -18,10 +19,16 @@ import event
 class Nyamuk(base_nyamuk.BaseNyamuk):
     """Nyamuk mqtt client class."""
     def __init__(self, client_id, username = None, password = None,
-                 server = "localhost", port = 1883, keepalive = NC.KEEPALIVE_VAL,
-                 log_level = logging.DEBUG):
+                 server = "localhost", port = None, keepalive = NC.KEEPALIVE_VAL,
+                 log_level = logging.DEBUG,
+                 ssl = False, ssl_opts=[]):
+
+        # default MQTT port
+        if port is None:
+            port = 8883 if ssl else 1883
+
         base_nyamuk.BaseNyamuk.__init__(self, client_id, username, password,
-                                        server, port, keepalive)
+                                        server, port, keepalive, ssl, ssl_opts)
         
         #logging
         self.logger = logging.getLogger(client_id)
@@ -126,10 +133,25 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         
         #create socket
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        if self.ssl:
+            opts = {
+                'do_handshake_on_connect': True,
+                'ssl_version': ssl.PROTOCOL_TLSv1
+            }
+            opts.update(self.ssl_opts)
+            #print opts, self.port
+
+            try:
+                self.sock = ssl.wrap_socket(self.sock, **opts)
+            except Exception, e:
+                self.logger.error("failed to initiate SSL connection: {0}".format(e))
+                return NC.ERR_UNKNOWN
+
         nyamuk_net.setkeepalives(self.sock)
         
         self.logger.info("Connecting to server ....%s", self.server)
         err = nyamuk_net.connect(self.sock,(self.server, self.port))
+        #print self.sock.cipher()
         
         if err != None:
             self.logger.error(err[1])
@@ -160,6 +182,14 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         
         self.logger.info("SUBSCRIBE: %s", topic)
         return self.send_subscribe(False, topic, qos)
+
+    def unsubscribe(self, topic):
+        """Unsubscribe to some topic."""
+        if self.sock == NC.INVALID_SOCKET:
+            return NC.ERR_NO_CONN
+        
+        self.logger.info("UNSUBSCRIBE: %s", topic)
+        return self.send_unsubscribe(False, topic)
     
     def send_disconnect(self):
         """Send disconnect command."""
@@ -184,6 +214,27 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         #payload
         pkt.write_string(topic)
         pkt.write_byte(qos)
+        
+        return self.packet_queue(pkt)
+    
+    def send_unsubscribe(self, dup, topic):
+        """Send unsubscribe COMMAND to server."""
+        pkt = MqttPkt()
+        
+        pktlen = 2 + 2 + len(topic)
+        pkt.command = NC.CMD_UNSUBSCRIBE | (dup << 3) | (1 << 1)
+        pkt.remaining_length = pktlen
+        
+        ret = pkt.alloc()
+        if ret != NC.ERR_SUCCESS:
+            return ret
+        
+        #variable header
+        mid = self.mid_generate()
+        pkt.write_uint16(mid)
+        
+        #payload
+        pkt.write_string(topic)
         
         return self.packet_queue(pkt)
     
@@ -223,7 +274,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         if ret != NC.ERR_SUCCESS:
             return ret
         
-        evt = event.EventConnack(ret)
+        evt = event.EventConnack(result)
         self.push_event(evt)
         
         if result == NC.CONNECT_ACCEPTED:
@@ -480,3 +531,6 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
 
         return self.packet_queue(pkt)
 
+    """ destructor """
+    def __del__(self):
+        self.logger.handlers=[]
