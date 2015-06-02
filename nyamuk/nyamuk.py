@@ -42,7 +42,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         wlist = []
         if len(self.out_packet) > 0:
             wlist.append(self.sock)
-        
+
         to_read, to_write, _ = select.select(rlist, wlist, [], timeout)
         
         if len(to_read) > 0:
@@ -95,17 +95,13 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         elif cmd == NC.CMD_PUBLISH:
             return self.handle_publish()
         elif cmd == NC.CMD_PUBACK:
-            print "Received PUBACK"
-            sys.exit(-1)
+            return self.handle_puback()
         elif cmd == NC.CMD_PUBREC:
-            print "Received PUBREC"
-            sys.exit(-1)
+            return self.handle_pubrec()
         elif cmd == NC.CMD_PUBREL:
-            print "Received PUBREL"
-            sys.exit(-1)
+            return self.handle_pubrel()
         elif cmd == NC.CMD_PUBCOMP:
-            print "Received PUBCOMP"
-            sys.exit(-1)
+            return self.handle_pubcomp()
         elif cmd == NC.CMD_SUBSCRIBE:
             sys.exit(-1)
         elif cmd == NC.CMD_SUBACK:
@@ -207,11 +203,14 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         #wildcard check : TODO
         mid = self.mid_generate()
         
-        if qos == 0:
+        if qos in (0,1,2):
             return self.send_publish(mid, topic, payload, qos, retain, False)
+
         else:
-            self.logger.error("Unsupport QoS=", qos)
+            self.logger.error("Unsupport QoS= %d", qos)
     
+        return NC.ERR_NOT_SUPPORTED
+
     def handle_connack(self):
         """Handle incoming CONNACK command."""
         self.logger.info("CONNACK reveived")
@@ -319,15 +318,12 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         
         qos = message.msg.qos
         
-        if qos == 0:
+        if qos in (0,1,2):
             evt = event.EventPublish(message.msg)
             self.push_event(evt)
 
             return NC.ERR_SUCCESS
         
-        elif qos == 1 or qos == 2:
-            self.logger.error("handle_publish. Unsupported QoS = 1 or QoS = 2")
-            sys.exit(-1)
         else:
             return NC.ERR_PROTOCOL
         
@@ -346,3 +342,141 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             return ret
         
         return self.packet_queue(pkt)
+
+    def handle_puback(self):
+        """Handle incoming PUBACK packet."""
+        self.logger.info("PUBACK received")
+
+        ret, mid = self.in_packet.read_uint16()
+
+        if ret != NC.ERR_SUCCESS:
+            return ret
+
+        evt = event.EventPuback(mid)
+        self.push_event(evt)
+
+        return NC.ERR_SUCCESS
+
+    def handle_pubrec(self):
+        """Handle incoming PUBREC packet."""
+        self.logger.info("PUBREC received")
+
+        ret, mid = self.in_packet.read_uint16()
+
+        if ret != NC.ERR_SUCCESS:
+            return ret
+
+        evt = event.EventPubrec(mid)
+        self.push_event(evt)
+
+        return NC.ERR_SUCCESS
+
+    def handle_pubrel(self):
+        """Handle incoming PUBREL packet."""
+        self.logger.info("PUBREL received")
+
+        ret, mid = self.in_packet.read_uint16()
+
+        if ret != NC.ERR_SUCCESS:
+            return ret
+
+        evt = event.EventPubrel(mid)
+        self.push_event(evt)
+
+        return NC.ERR_SUCCESS
+
+    def handle_pubcomp(self):
+        """Handle incoming PUBCOMP packet."""
+        self.logger.info("PUBCOMP received")
+
+        ret, mid = self.in_packet.read_uint16()
+
+        if ret != NC.ERR_SUCCESS:
+            return ret
+
+        evt = event.EventPubcomp(mid)
+        self.push_event(evt)
+
+        return NC.ERR_SUCCESS
+
+    def puback(self, mid):
+        """Send PUBACK response to server."""
+        if self.sock == NC.INVALID_SOCKET:
+            return NC.ERR_NO_CONN
+
+        self.logger.info("Send PUBACK (msgid=%s)", mid)
+        pkt = MqttPkt()
+
+        pkt.command = NC.CMD_PUBACK
+        pkt.remaining_length = 2
+
+        ret = pkt.alloc()
+        if ret != NC.ERR_SUCCESS:
+            return ret
+
+        #variable header: acknowledged message id
+        pkt.write_uint16(mid)
+
+        return self.packet_queue(pkt)
+
+    def pubrel(self, mid):
+        """Send PUBREL response to server."""
+        if self.sock == NC.INVALID_SOCKET:
+            return NC.ERR_NO_CONN
+
+        self.logger.info("Send PUBREL (msgid=%s)", mid)
+        pkt = MqttPkt()
+
+        # PUBREL QOS = 1
+        pkt.command = NC.CMD_PUBREL | (1 << 1)
+        pkt.remaining_length = 2
+
+        ret = pkt.alloc()
+        if ret != NC.ERR_SUCCESS:
+            return ret
+
+        #variable header: acknowledged message id
+        pkt.write_uint16(mid)
+
+        return self.packet_queue(pkt)
+
+    def pubrec(self, mid):
+        """Send PUBREC response to server."""
+        if self.sock == NC.INVALID_SOCKET:
+            return NC.ERR_NO_CONN
+
+        self.logger.info("Send PUBREC (msgid=%s)", mid)
+        pkt = MqttPkt()
+
+        pkt.command = NC.CMD_PUBREC
+        pkt.remaining_length = 2
+
+        ret = pkt.alloc()
+        if ret != NC.ERR_SUCCESS:
+            return ret
+
+        #variable header: acknowledged message id
+        pkt.write_uint16(mid)
+
+        return self.packet_queue(pkt)
+
+    def pubcomp(self, mid):
+        """Send PUBCOMP response to server."""
+        if self.sock == NC.INVALID_SOCKET:
+            return NC.ERR_NO_CONN
+
+        self.logger.info("Send PUBCOMP (msgid=%s)", mid)
+        pkt = MqttPkt()
+
+        pkt.command = NC.CMD_PUBCOMP
+        pkt.remaining_length = 2
+
+        ret = pkt.alloc()
+        if ret != NC.ERR_SUCCESS:
+            return ret
+
+        #variable header: acknowledged message id
+        pkt.write_uint16(mid)
+
+        return self.packet_queue(pkt)
+

@@ -35,6 +35,30 @@ class EventSuback(BaseEvent):
         self.mid = mid
         self.granted_qos = granted_qos
 
+class EventPuback(BaseEvent):
+    """PUBACK received."""
+    def __init__(self, mid):
+        BaseEvent.__init__(self, NC.CMD_PUBACK)
+        self.mid = mid
+
+class EventPubrec(BaseEvent):
+    """PUBREC received."""
+    def __init__(self, mid):
+        BaseEvent.__init__(self, NC.CMD_PUBREC)
+        self.mid = mid
+
+class EventPubrel(BaseEvent):
+    """PUBREL received."""
+    def __init__(self, mid):
+        BaseEvent.__init__(self, NC.CMD_PUBREL)
+        self.mid = mid
+
+class EventPubcomp(BaseEvent):
+    """PUBCOMP received."""
+    def __init__(self, mid):
+        BaseEvent.__init__(self, NC.CMD_PUBCOMP)
+        self.mid = mid
+
 class EventNeterr(BaseEvent):
     """Network error event."""
     def __init__(self, errnum, msg):

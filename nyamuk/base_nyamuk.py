@@ -79,7 +79,10 @@ class BaseNyamuk:
         if self.last_mid == 0:
             self.last_mid += 1
         return self.last_mid
-    
+
+    def get_last_mid(self):
+        return self.last_mid
+
     def packet_queue(self, pkt):
         """Enqueue packet to out_packet queue."""
         
