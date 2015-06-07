@@ -35,6 +35,12 @@ class EventSuback(BaseEvent):
         self.mid = mid
         self.granted_qos = granted_qos
 
+class EventUnsuback(BaseEvent):
+    """UNSUBACK received."""
+    def __init__(self, mid):
+        BaseEvent.__init__(self, NC.CMD_UNSUBACK)
+        self.mid = mid
+
 class EventPuback(BaseEvent):
     """PUBACK received."""
     def __init__(self, mid):
