@@ -4,6 +4,7 @@ Copyright Iwan Budi Kusnanto
 '''
 import sys
 import logging
+import argparse
 
 from nyamuk import nyamuk
 from nyamuk import nyamuk_const as NC
@@ -69,12 +70,15 @@ def start_nyamuk(server, client_id, topic, username = None, password = None):
     ny.logger.info("subscriber exited")
     
 if __name__ == '__main__':
-    if len(sys.argv) != 4:
-        print "usage    : python submq.py server client_id topic"
-        print "example  : python submq.py localhost sub-iwan teknobridges"
-        sys.exit(0)
-        
-    server = sys.argv[1]
-    client_id = sys.argv[2]
-    topic = sys.argv[3]
-    start_nyamuk(server, client_id, topic)
+    parser = argparse.ArgumentParser(description="Nyamuk subscriber sample client")
+    parser.add_argument('--qos', type=int, dest='qos', default=0, choices=[0, 1, 2],
+        help='messages qos')
+    parser.add_argument('-s', '--server', type=str, dest='server', default='localhost',
+        help='mqtt server')
+    parser.add_argument('-c', '--client-id', type=str, dest='client_id', required=True,
+        help='client id')
+    parser.add_argument('-t', '--topic', type=str, dest='topic', required=True,
+        help='topic')
+    args = parser.parse_args()
+
+    start_nyamuk(args.server, args.client_id, args.topic)

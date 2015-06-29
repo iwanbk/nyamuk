@@ -3,6 +3,7 @@ Nyamuk publisher example
 copyright 2012 Iwan Budi Kusnanto
 '''
 import sys
+import argparse
 
 from nyamuk import nyamuk
 import nyamuk.nyamuk_const as NC
@@ -49,13 +50,17 @@ def start_nyamuk(server, client_id, topic, payload):
         rc = ny.loop()
     
 if __name__ == '__main__':
-    if len(sys.argv) != 5:
-        print "usage   : python submq.py server name topic payload"
-        print "example : python submq.py localhost sub-iwan teknobridges HaloMqtt"
-        sys.exit(0)
-        
-    server = sys.argv[1]
-    name = sys.argv[2]
-    topic = sys.argv[3]
-    payload = sys.argv[4]
-    start_nyamuk(server, name, topic, payload)
+    parser = argparse.ArgumentParser(description="Nyamuk subscriber sample client")
+    parser.add_argument('--qos', type=int, dest='qos', default=0, choices=[0, 1, 2],
+        help='messages qos')
+    parser.add_argument('-s', '--server', type=str, dest='server', default='localhost',
+        help='mqtt server')
+    parser.add_argument('-c', '--client-id', type=str, dest='client_id', required=True,
+        help='client id')
+    parser.add_argument('-t', '--topic', type=str, dest='topic', required=True,
+        help='topic')
+    parser.add_argument('-m', '--message', type=str, dest='msg', required=True,
+        help='message')
+    args = parser.parse_args()
+
+    start_nyamuk(args.server, args.client_id, args.topic, args.msg)
