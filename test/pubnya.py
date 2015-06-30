@@ -46,8 +46,11 @@ def start_nyamuk(server, client_id, topic, payload):
                 if ret_code == NC.CONNECT_ACCEPTED:
                     print "publishing payload"
                     ny.publish(topic, payload)
+                    break
                 
         rc = ny.loop()
+
+    ny.disconnect()
     
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Nyamuk subscriber sample client")
