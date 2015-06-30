@@ -13,7 +13,7 @@ def handle_connack(ev):
     print "CONNACK received"
     rc = ev.ret_code
     if rc == NC.CONNECT_ACCEPTED:
-        print "\tconnection success"
+        print "\tconnection successful"
     elif rc == 1:
         print "\tConnection refused : unacceptable protocol version"
     elif rc == 2:
@@ -29,29 +29,32 @@ def handle_connack(ev):
     
     return rc
     
-def start_nyamuk(server, client_id, topic, payload):
-    ny = nyamuk.Nyamuk(client_id, server = server)
+def start_nyamuk(server, client_id, topic, payload, username = None, password = None):
+    ny = nyamuk.Nyamuk(client_id, username, password, server)
     rc = ny.connect()
     if rc != NC.ERR_SUCCESS:
-        print "Can't connect"
+        print "Connection failed : can't connect to the broker"
         sys.exit(-1)
     
-    index = 0
-    
     while rc == NC.ERR_SUCCESS:
-        ev = ny.pop_event()
-        if ev != None:
-            if ev.type == NC.CMD_CONNACK:
-                ret_code = handle_connack(ev)
-                if ret_code == NC.CONNECT_ACCEPTED:
-                    print "publishing payload"
-                    ny.publish(topic, payload)
-                    break
-                
         rc = ny.loop()
+        if rc == NC.ERR_CONN_LOST:
+            ny.logger.fatal("Connection to server closed"); break
+
+        ev = ny.pop_event()
+        if ev is None:
+            continue
+
+        if ev.type == NC.CMD_CONNACK:
+            ret_code = handle_connack(ev)
+            if ret_code == NC.CONNECT_ACCEPTED:
+                print "publishing payload"
+                ny.publish(topic, payload)
+                break
 
     ny.disconnect()
-    
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Nyamuk subscriber sample client")
     parser.add_argument('--qos', type=int, dest='qos', default=0, choices=[0, 1, 2],
@@ -64,6 +67,10 @@ if __name__ == '__main__':
         help='topic')
     parser.add_argument('-m', '--message', type=str, dest='msg', required=True,
         help='message')
+    parser.add_argument('-u', '--user', type=str, dest='username',
+        help='username')
+    parser.add_argument('-p', '--pass', type=str, dest='password',
+        help='password')
     args = parser.parse_args()
 
-    start_nyamuk(args.server, args.client_id, args.topic, args.msg)
+    start_nyamuk(args.server, args.client_id, args.topic, args.msg, args.username, args.password)
