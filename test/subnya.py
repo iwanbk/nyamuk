@@ -27,22 +27,33 @@ def handle_connack(ev):
         print "\tConnection refused : not authorized"
     else:
         print "\tConnection refused : unknown reason = ", rc
-    
+
     return rc
-        
-def handle_publish(ev):
+
+def handle_publish(ev, ny):
     msg = ev.msg
     print "PUBLISH_RECEIVED"
     print "\ttopic : " + msg.topic
     if msg.payload is not None:
         print "\tpayload : " + msg.payload
 
-def handle_suback(ev):
+    if msg.qos == 1:
+        ny.puback(msg.mid)
+    elif msg.qos == 2:
+        ny.pubrec(msg.mid)
+
+def handle_suback(ev, ny):
     print "SUBACK RECEIVED"
     print "\tQOS Count = ", len(ev.granted_qos)
     print "\tMID = ", ev.mid
-        
-def start_nyamuk(server, client_id, topic, username = None, password = None):
+
+def handle_pubrel(ev, ny):
+    print "PUBREL RECEIVED (msgid= {0})".format(ev.mid)
+    ny.pubcomp(ev.mid)
+
+
+def start_nyamuk(server = 'localhost', client_id = None, topic = None, username = None, password = None, **kwargs):
+    print server, client_id
     ny = nyamuk.Nyamuk(client_id, username, password, server)
     rc = ny.connect()
     if rc != NC.ERR_SUCCESS:
@@ -50,8 +61,8 @@ def start_nyamuk(server, client_id, topic, username = None, password = None):
         sys.exit(-1)
 
     # queued after CONNECT
-    rc = ny.subscribe(topic, 0)
-    
+    rc = ny.subscribe(topic, kwargs.get('qos',0))
+
     while rc == NC.ERR_SUCCESS:
         rc = ny.loop()
         if rc == NC.ERR_CONN_LOST:
@@ -64,20 +75,21 @@ def start_nyamuk(server, client_id, topic, username = None, password = None):
         if ev.type == NC.CMD_CONNACK:
             handle_connack(ev)
         elif ev.type == NC.CMD_PUBLISH:
-            handle_publish(ev)
+            handle_publish(ev, ny)
         elif ev.type == NC.CMD_SUBACK:
-            handle_suback(ev)
-        elif ev.type == EV_NET_ERR:
+            handle_suback(ev, ny)
+        elif ev.type == NC.CMD_PUBREL:
+            handle_pubrel(ev, ny)
+
+        elif ev.type == event.EV_NET_ERR:
             print "Network Error. Msg = ", ev.msg
             sys.exit(-1)
-            
+
     ny.logger.info("subscriber exited")
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Nyamuk subscriber sample client")
-    parser.add_argument('--qos', type=int, dest='qos', default=0, choices=[0, 1, 2],
-        help='messages qos')
     parser.add_argument('-s', '--server', type=str, dest='server', default='localhost',
         help='mqtt server')
     parser.add_argument('-c', '--client-id', type=str, dest='client_id', required=True,
@@ -88,6 +100,8 @@ if __name__ == '__main__':
         help='username')
     parser.add_argument('-p', '--pass', type=str, dest='password',
         help='password')
+    parser.add_argument('--qos', type=int, dest='qos', default=0, choices=[0, 1, 2],
+        help='messages qos')
     args = parser.parse_args()
 
-    start_nyamuk(args.server, args.client_id, args.topic, args.username, args.password)
+    start_nyamuk(**vars(args))
