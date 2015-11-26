@@ -302,23 +302,26 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
     def handle_connack(self):
         """Handle incoming CONNACK command."""
         self.logger.info("CONNACK reveived")
-        ret, _ = self.in_packet.read_byte()
+        ret, flags = self.in_packet.read_byte()
         if ret != NC.ERR_SUCCESS:
             self.logger.error("error read byte")
             return ret
         
-        ret, result = self.in_packet.read_byte()
+        # useful for v3.1.1 only
+        session_present = flags & 0x01
+
+        ret, retcode = self.in_packet.read_byte()
         if ret != NC.ERR_SUCCESS:
             return ret
         
-        evt = event.EventConnack(result)
+        evt = event.EventConnack(retcode, session_present)
         self.push_event(evt)
         
-        if result == NC.CONNECT_ACCEPTED:
+        if retcode == NC.CONNECT_ACCEPTED:
             self.state = NC.CS_CONNECTED
             return NC.ERR_SUCCESS
         
-        elif result >= 1 and result <= 5:
+        elif retcode >= 1 and retcode <= 5:
             return NC.ERR_CONN_REFUSED
         else:
             return NC.ERR_PROTOCOL
