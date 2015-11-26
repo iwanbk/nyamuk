@@ -129,7 +129,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
     # will = None | {'topic': Topic, 'message': Msg, 'qos': 0|1|2, retain=True|False}
     # will message, qos and retain are optional (default to empty string, 0 qos and False retain)
     #
-    def connect(self, clean_session = 1, will = None):
+    def connect(self, version = 3, clean_session = 1, will = None):
         """Connect to server."""
         self.clean_session = clean_session
         self.will          = None
@@ -146,7 +146,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
 
         #CONNECT packet
         pkt = MqttPkt()
-        pkt.connect_build(self, self.keep_alive, clean_session)
+        pkt.connect_build(self, self.keep_alive, clean_session, version = version)
         
         #create socket
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

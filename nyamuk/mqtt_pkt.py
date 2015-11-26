@@ -97,7 +97,7 @@ class MqttPkt:
         self.to_process = 0
         self.pos = 0
     
-    def connect_build(self, nyamuk, keepalive, clean_session, retain = 0, dup = 0):
+    def connect_build(self, nyamuk, keepalive, clean_session, retain = 0, dup = 0, version = 3):
         """Build packet for CONNECT command."""
         will = 0; will_topic = None
         byte = 0
@@ -127,8 +127,8 @@ class MqttPkt:
             return rc
          
         #var header
-        self.write_string(NC.PROTOCOL_NAME)
-        self.write_byte(NC.PROTOCOL_VERSION)
+        self.write_string(getattr(NC, 'PROTOCOL_NAME_{0}'.format(version)))
+        self.write_byte(  getattr(NC, 'PROTOCOL_VERSION_{0}'.format(version)))
         
         byte = (clean_session & 0x1) << 1
         
