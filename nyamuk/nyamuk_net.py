@@ -53,7 +53,7 @@ def read(sock, count):
     ba_data = bytearray(data)
     
     if len(ba_data) == 0:
-        return ba_data, 0, "Connection closed"
+        return ba_data, errno.ECONNRESET, "Connection closed"
     
     return ba_data, 0, ""
 
