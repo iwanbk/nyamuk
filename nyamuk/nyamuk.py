@@ -198,7 +198,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             return NC.ERR_NO_CONN
         
         self.logger.info("UNSUBSCRIBE: %s", topic)
-        return self.send_unsubscribe(False, topic)
+        return self.send_unsubscribe(False, topic.encode('utf8'))
     
     def send_disconnect(self):
         """Send disconnect command."""
