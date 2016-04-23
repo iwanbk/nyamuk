@@ -7,11 +7,11 @@ import nyamuk_const as NC
 
 class NyamukMsg:
     """Nyamuk message."""
-    def __init__(self):
+    def __init__(self, topic=None, payload=None):
         self.mid = 0
-        self.topic = None
-        self.payload = None
-        self.payloadlen = -1
+        self.topic = topic
+        self.payload = payload
+        self.payloadlen = -1 if payload is None else len(payload)
         self.qos = -1
         self.retain = False
         

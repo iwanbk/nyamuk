@@ -2,6 +2,8 @@
 Nyamuk : Python MQTT Client library
 Copyright 2012 Iwan Budi Kusnanto
 """
+# -*- coding: utf8 -*-
+
 import socket
 import select
 import time
@@ -12,7 +14,7 @@ import logging
 import base_nyamuk
 import nyamuk_const as NC
 from mqtt_pkt import MqttPkt
-from nyamuk_msg import NyamukMsgAll
+from nyamuk_msg import NyamukMsgAll, NyamukMsg
 import nyamuk_net
 import event
 
@@ -123,10 +125,14 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             self.logger.warning("Unknown protocol. Cmd = %d", cmd)
             return NC.ERR_PROTOCOL
     
-    def connect(self, clean_session = 1):
+    #
+    # will = None | {'topic': Topic, 'message': Msg}
+    #
+    def connect(self, clean_session = 1, will = None):
         """Connect to server."""
         self.clean_session = clean_session
-        
+        self.will          = None if will is None else NyamukMsg(topic=will['topic'], payload=will['message'])
+
         #CONNECT packet
         pkt = MqttPkt()
         pkt.connect_build(self, self.keep_alive, clean_session)

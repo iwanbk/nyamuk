@@ -139,8 +139,9 @@ class MqttPkt:
         self.write_string(nyamuk.client_id)
         
         if will:
-            #TODO
-            sys.exit(-1)
+            self.write_string(nyamuk.will.topic)
+            self.write_string(nyamuk.will.payload)
+
         if nyamuk.username is not None:
             self.write_string(nyamuk.username)
             if nyamuk.password is not None:
