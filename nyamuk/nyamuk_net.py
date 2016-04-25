@@ -21,7 +21,7 @@ def connect(sock, addr):
     except ssl.SSLError as e:
         return (ssl.SSLError, e.strerror if e.strerror else e.message)
     except socket.herror as (_, msg):
-        return (socket.herror, str)
+        return (socket.herror, msg)
     except socket.gaierror as (_, msg):
         return (socket.gaierror, msg)
     except socket.timeout:
