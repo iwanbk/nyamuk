@@ -126,12 +126,13 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             return NC.ERR_PROTOCOL
     
     #
-    # will = None | {'topic': Topic, 'message': Msg}
+    # will = None | {'topic': Topic, 'message': Msg, 'qos': 1|2|3}
     #
     def connect(self, clean_session = 1, will = None):
         """Connect to server."""
         self.clean_session = clean_session
-        self.will          = None if will is None else NyamukMsg(topic=will['topic'], payload=will['message'])
+        self.will          = None if will is None else \
+            NyamukMsg(topic=will['topic'], payload=will['message'], qos=will.get('qos', 0))
 
         #CONNECT packet
         pkt = MqttPkt()
