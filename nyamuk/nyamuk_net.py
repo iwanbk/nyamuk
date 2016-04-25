@@ -20,14 +20,14 @@ def connect(sock, addr):
         sock.connect(addr)
     except ssl.SSLError as e:
         return (ssl.SSLError, e.strerror if e.strerror else e.message)
-    except socket.error as e:
-        return (socket.error, e.strerror if e.strerror else e.message)
     except socket.herror as (_, msg):
         return (socket.herror, str)
     except socket.gaierror as (_, msg):
         return (socket.gaierror, msg)
     except socket.timeout:
         return (socket.timeout, "timeout")
+    except socket.error as e:
+        return (socket.error, e.strerror if e.strerror else e.message)
     
     return None
     
@@ -63,14 +63,14 @@ def write(sock, payload):
         length = sock.send(payload)
     except ssl.SSLError as e:
         return -1, (ssl.SSLError, e.strerror if strerror else e.message)
-    except socket.error as (_, msg):
-        return -1, (socket.error, msg)
     except socket.herror as (_, msg):
         return -1, (socket.error, msg)
     except socket.gaierror as (_, msg):
         return -1, (socket.gaierror, msg)
     except socket.timeout:
         return -1, (socket.timeout, "timeout")
+    except socket.error as (_, msg):
+        return -1, (socket.error, msg)
     
     return length, None
 
