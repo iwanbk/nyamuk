@@ -234,6 +234,19 @@ class BaseNyamuk:
         if self.sock != NC.INVALID_SOCKET:
             self.sock.close()
         self.sock = NC.INVALID_SOCKET
+
+    #
+    # return True is socket is connected, or False
+    #
+    def conn_is_alive(self):
+        if self.sock == NC.INVALID_SOCKET:
+            return False
+
+        data,err,msg = nyamuk_net.read(self.sock, 1)
+        if err in (errno.ECONNRESET, errno.ETIMEDOUT) :
+            return False
+
+        return True
         
     def build_publish_pkt(self, mid, topic, payload, qos, retain, dup):
         """Build PUBLISH packet."""
