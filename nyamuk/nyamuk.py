@@ -17,6 +17,7 @@ from mqtt_pkt import MqttPkt
 from nyamuk_msg import NyamukMsgAll, NyamukMsg
 import nyamuk_net
 import event
+from . import utf8encode
 
 class Nyamuk(base_nyamuk.BaseNyamuk):
     """Nyamuk mqtt client class."""
@@ -126,13 +127,22 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             return NC.ERR_PROTOCOL
     
     #
-    # will = None | {'topic': Topic, 'message': Msg, 'qos': 1|2|3}
+    # will = None | {'topic': Topic, 'message': Msg, 'qos': 0|1|2}
+    # will message and qos are optional (default to empty string and 0 qos)
     #
     def connect(self, clean_session = 1, will = None):
         """Connect to server."""
         self.clean_session = clean_session
-        self.will          = None if will is None else \
-            NyamukMsg(topic=will['topic'], payload=will['message'], qos=will.get('qos', 0))
+        self.will          = None
+        
+        if will is not None:
+            self.will = NyamukMsg(
+                topic = will['topic'],
+                # unicode text needs to be utf8 encoded to be sent on the wire
+                # str or bytearray are kept as it is
+                payload = utf8encode(will.get('message','')),
+                qos = will.get('qos', 0)
+            )
 
         #CONNECT packet
         pkt = MqttPkt()

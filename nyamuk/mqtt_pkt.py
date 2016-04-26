@@ -4,6 +4,7 @@ MQTT Packet
 '''
 import sys
 
+from . import utf8encode
 import nyamuk_const as NC
 import nyamuk_net
 
@@ -98,19 +99,25 @@ class MqttPkt:
     
     def connect_build(self, nyamuk, keepalive, clean_session, retain = 0, dup = 0):
         """Build packet for CONNECT command."""
-        will = 0
+        will = 0; will_topic = None
         byte = 0
-        
+
+        client_id = utf8encode(nyamuk.client_id)
+        username  = utf8encode(nyamuk.username) if nyamuk.username is not None else None
+        password  = utf8encode(nyamuk.password) if nyamuk.password is not None else None
+
         #payload len
-        payload_len = 2 + len(nyamuk.client_id)
+        payload_len = 2 + len(client_id)
         if nyamuk.will is not None:
             will = 1
-            payload_len = payload_len + 2 + len(nyamuk.will.topic) + 2 + nyamuk.will.payloadlen
+            will_topic = utf8encode(nyamuk.will.topic)
+
+            payload_len = payload_len + 2 + len(will_topic) + 2 + nyamuk.will.payloadlen
         
-        if nyamuk.username is not None:
-            payload_len = payload_len + 2 + len(nyamuk.username)
-            if nyamuk.password != None:
-                payload_len = payload_len + 2 + len(nyamuk.password)
+        if username is not None:
+            payload_len = payload_len + 2 + len(username)
+            if password != None:
+                payload_len = payload_len + 2 + len(password)
         
         self.command = NC.CMD_CONNECT
         self.remaining_length = 12 + payload_len
@@ -136,16 +143,16 @@ class MqttPkt:
         self.write_byte(byte)
         self.write_uint16(keepalive)
         #payload
-        self.write_string(nyamuk.client_id)
+        self.write_string(client_id)
         
         if will:
-            self.write_string(nyamuk.will.topic)
+            self.write_string(will_topic)
             self.write_string(nyamuk.will.payload)
 
-        if nyamuk.username is not None:
-            self.write_string(nyamuk.username)
-            if nyamuk.password is not None:
-                self.write_string(nyamuk.password)
+        if username is not None:
+            self.write_string(username)
+            if password is not None:
+                self.write_string(password)
             
         nyamuk.keep_alive = keepalive
         
