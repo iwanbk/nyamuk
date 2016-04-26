@@ -17,6 +17,7 @@ from mqtt_pkt import MqttPkt
 from nyamuk_msg import NyamukMsgAll, NyamukMsg
 import nyamuk_net
 import event
+from . import utf8encode
 
 class Nyamuk(base_nyamuk.BaseNyamuk):
     """Nyamuk mqtt client class."""
@@ -126,13 +127,22 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             return NC.ERR_PROTOCOL
     
     #
-    # will = None | {'topic': Topic, 'message': Msg, 'qos': 1|2|3}
+    # will = None | {'topic': Topic, 'message': Msg, 'qos': 0|1|2}
+    # will message and qos are optional (default to empty string and 0 qos)
     #
     def connect(self, clean_session = 1, will = None):
         """Connect to server."""
         self.clean_session = clean_session
-        self.will          = None if will is None else \
-            NyamukMsg(topic=will['topic'], payload=will['message'], qos=will.get('qos', 0))
+        self.will          = None
+        
+        if will is not None:
+            self.will = NyamukMsg(
+                topic = will['topic'],
+                # unicode text needs to be utf8 encoded to be sent on the wire
+                # str or bytearray are kept as it is
+                payload = utf8encode(will.get('message','')),
+                qos = will.get('qos', 0)
+            )
 
         #CONNECT packet
         pkt = MqttPkt()
@@ -188,7 +198,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             return NC.ERR_NO_CONN
         
         self.logger.info("SUBSCRIBE: %s", topic)
-        return self.send_subscribe(False, topic, qos)
+        return self.send_subscribe(False, utf8encode(topic))
 
     def unsubscribe(self, topic):
         """Unsubscribe to some topic."""
@@ -196,7 +206,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             return NC.ERR_NO_CONN
         
         self.logger.info("UNSUBSCRIBE: %s", topic)
-        return self.send_unsubscribe(False, topic)
+        return self.send_unsubscribe(False, utf8encode(topic))
     
     def send_disconnect(self):
         """Send disconnect command."""
@@ -350,7 +360,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         message.msg.retain = (header & 0x01)
         
         ret, ba_data = self.in_packet.read_string()
-        message.msg.topic = ba_data.decode()
+        message.msg.topic = ba_data.decode('utf8')
         
         if ret != NC.ERR_SUCCESS:
             return ret
@@ -368,10 +378,10 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             ret, message.msg.payload = self.in_packet.read_bytes(message.msg.payloadlen)
             if ret != NC.ERR_SUCCESS:
                 return ret
-        
+       
         self.logger.debug("Received PUBLISH(dup = %d,qos=%d,retain=%s", message.dup, message.msg.qos, message.msg.retain)
         self.logger.debug("\tmid=%d, topic=%s, payloadlen=%d", message.msg.mid, message.msg.topic, message.msg.payloadlen)
-        
+
         message.timestamp = time.time()
         
         qos = message.msg.qos
@@ -392,7 +402,10 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         self.logger.debug("Send PUBLISH")
         if self.sock == NC.INVALID_SOCKET:
             return NC.ERR_NO_CONN
-        return self._do_send_publish(mid, topic, payload, qos, retain, dup)
+
+        #NOTE: payload may be any kind of data
+        #      yet if it is a unicode string we utf8-encode it as convenience
+        return self._do_send_publish(mid, utf8encode(topic), utf8encode(payload), qos, retain, dup)
     
     def _do_send_publish(self, mid, topic, payload, qos, retain, dup):
         ret, pkt = self.build_publish_pkt(mid, topic, payload, qos, retain, dup)
