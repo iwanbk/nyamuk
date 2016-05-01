@@ -199,7 +199,16 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             return NC.ERR_NO_CONN
         
         self.logger.info("SUBSCRIBE: %s", topic)
-        return self.send_subscribe(False, utf8encode(topic))
+        return self.send_subscribe(False, [(utf8encode(topic), qos)])
+
+    # subscribe to multiple topic filters at once
+    def subscribe_multi(self, topics):
+        """Subscribe to some topics."""
+        if self.sock == NC.INVALID_SOCKET:
+            return NC.ERR_NO_CONN
+        
+        self.logger.info("SUBSCRIBE: %s", ', '.join([t for (t,q) in topics]))
+        return self.send_subscribe(False, [(utf8encode(topic), qos) for (topic, qos) in topics])
 
     def unsubscribe(self, topic):
         """Unsubscribe to some topic."""
@@ -207,17 +216,26 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             return NC.ERR_NO_CONN
         
         self.logger.info("UNSUBSCRIBE: %s", topic)
-        return self.send_unsubscribe(False, utf8encode(topic))
-    
+        return self.send_unsubscribe(False, [utf8encode(topic)])
+
+    def unsubscribe_multi(self, topics):
+        """Unsubscribe to some topics."""
+        if self.sock == NC.INVALID_SOCKET:
+            return NC.ERR_NO_CONN
+        
+        self.logger.info("UNSUBSCRIBE: %s", ', '.join(topics))
+        return self.send_unsubscribe(False, [utf8encode(topic) for topic in topics])
+
     def send_disconnect(self):
         """Send disconnect command."""
         return self.send_simple_command(NC.CMD_DISCONNECT)
         
-    def send_subscribe(self, dup, topic, qos):
+    # topics: [(topic, qos)]
+    def send_subscribe(self, dup, topics):
         """Send subscribe COMMAND to server."""
         pkt = MqttPkt()
         
-        pktlen = 2 + 2 + len(topic) + 1
+        pktlen = 2 + sum([2+len(topic)+1 for (topic, qos) in topics])
         pkt.command = NC.CMD_SUBSCRIBE | (dup << 3) | (1 << 1)
         pkt.remaining_length = pktlen
         
@@ -230,16 +248,17 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         pkt.write_uint16(mid)
         
         #payload
-        pkt.write_string(topic)
-        pkt.write_byte(qos)
+        for (topic, qos) in topics:
+            pkt.write_string(topic)
+            pkt.write_byte(qos)
         
         return self.packet_queue(pkt)
     
-    def send_unsubscribe(self, dup, topic):
+    def send_unsubscribe(self, dup, topics):
         """Send unsubscribe COMMAND to server."""
         pkt = MqttPkt()
         
-        pktlen = 2 + 2 + len(topic)
+        pktlen = 2 + sum([2+len(topic) for topic in topics])
         pkt.command = NC.CMD_UNSUBSCRIBE | (dup << 3) | (1 << 1)
         pkt.remaining_length = pktlen
         
@@ -252,7 +271,8 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         pkt.write_uint16(mid)
         
         #payload
-        pkt.write_string(topic)
+        for topic in topics:
+            pkt.write_string(topic)
         
         return self.packet_queue(pkt)
     
