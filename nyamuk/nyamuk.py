@@ -127,8 +127,8 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             return NC.ERR_PROTOCOL
     
     #
-    # will = None | {'topic': Topic, 'message': Msg, 'qos': 0|1|2}
-    # will message and qos are optional (default to empty string and 0 qos)
+    # will = None | {'topic': Topic, 'message': Msg, 'qos': 0|1|2, retain=True|False}
+    # will message, qos and retain are optional (default to empty string, 0 qos and False retain)
     #
     def connect(self, clean_session = 1, will = None):
         """Connect to server."""
@@ -141,7 +141,8 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
                 # unicode text needs to be utf8 encoded to be sent on the wire
                 # str or bytearray are kept as it is
                 payload = utf8encode(will.get('message','')),
-                qos = will.get('qos', 0)
+                qos = will.get('qos', 0),
+                retain = will.get('retain', False)
             )
 
         #CONNECT packet
