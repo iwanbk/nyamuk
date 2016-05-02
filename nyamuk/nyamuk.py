@@ -327,6 +327,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
     def handle_pingresp(self):
         """Handle incoming PINGRESP packet."""
         self.logger.debug("PINGRESP received")
+        self.push_event(event.EventPingResp())
         return NC.ERR_SUCCESS
     
     def handle_suback(self):
@@ -366,7 +367,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
     def send_pingreq(self):
         """Send PINGREQ command to server."""
         self.logger.debug("SEND PINGREQ")
-        self.send_simple_command(NC.CMD_PINGREQ)
+        return self.send_simple_command(NC.CMD_PINGREQ)
     
     def handle_publish(self):
         """Handle incoming PUBLISH packet."""
