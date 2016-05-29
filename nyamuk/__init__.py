@@ -1,8 +1,7 @@
 
-# encode unicode string to utf8
-#
-def utf8encode(unistr):
-    if type(unistr) is unicode:
-        return unistr.encode('utf8')
+from nyamuk         import Nyamuk
+from event          import *
 
-    return unistr
+import nyamuk_const as NC
+
+
