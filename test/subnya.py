@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding: utf8 -*-
 '''
 Nyamuk subscriber example
 Copyright Iwan Budi Kusnanto
@@ -52,10 +54,10 @@ def handle_pubrel(ev, ny):
     ny.pubcomp(ev.mid)
 
 
-def start_nyamuk(server = 'localhost', client_id = None, topic = None, username = None, password = None, **kwargs):
-    print server, client_id
-    ny = nyamuk.Nyamuk(client_id, username, password, server)
-    rc = ny.connect()
+def start_nyamuk(server = 'localhost', port = 1883, client_id = None, topic = None, username = None, 
+                 password = None, version = 3, **kwargs):
+    ny = nyamuk.Nyamuk(client_id, username, password, server=server, port=port)
+    rc = ny.connect(version=version)
     if rc != NC.ERR_SUCCESS:
         print "Connection failed : can't connect to the broker"
         sys.exit(-1)
@@ -91,7 +93,9 @@ def start_nyamuk(server = 'localhost', client_id = None, topic = None, username 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Nyamuk subscriber sample client")
     parser.add_argument('-s', '--server', type=str, dest='server', default='localhost',
-        help='mqtt server')
+        help='mqtt broker address')
+    parser.add_argument('-o', '--port', type=int, dest='port', default=1883,
+        help='mqtt broker port')
     parser.add_argument('-c', '--client-id', type=str, dest='client_id', required=True,
         help='client id')
     parser.add_argument('-t', '--topic', type=str, dest='topic', required=True,
@@ -102,6 +106,8 @@ if __name__ == '__main__':
         help='password')
     parser.add_argument('--qos', type=int, dest='qos', default=0, choices=[0, 1, 2],
         help='messages qos')
+    parser.add_argument('-v', '--version', type=int, dest='version', default=3, choices=[3, 4],
+        help='mqtt version')
     args = parser.parse_args()
 
     start_nyamuk(**vars(args))
