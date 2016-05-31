@@ -1,5 +1,3 @@
-https://img.shields.io/pypi/v/nyamuk.svg
-https://img.shields.io/pypi/dm/nyamuk.svg downloads
 
 Nyamuk
 ======
