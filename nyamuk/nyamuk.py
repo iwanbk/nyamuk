@@ -359,7 +359,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             
             i += 1
         
-        evt = event.EventSuback(mid, granted_qos)
+        evt = event.EventSuback(mid, list(granted_qos))
         self.push_event(evt)
         
         granted_qos = None
