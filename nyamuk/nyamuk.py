@@ -129,7 +129,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
     # will = None | {'topic': Topic, 'message': Msg, 'qos': 0|1|2, retain=True|False}
     # will message, qos and retain are optional (default to empty string, 0 qos and False retain)
     #
-    def connect(self, clean_session = 1, will = None):
+    def connect(self, version = 3, clean_session = 1, will = None):
         """Connect to server."""
         self.clean_session = clean_session
         self.will          = None
@@ -146,7 +146,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
 
         #CONNECT packet
         pkt = MqttPkt()
-        pkt.connect_build(self, self.keep_alive, clean_session)
+        pkt.connect_build(self, self.keep_alive, clean_session, version = version)
         
         #create socket
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -302,23 +302,26 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
     def handle_connack(self):
         """Handle incoming CONNACK command."""
         self.logger.info("CONNACK reveived")
-        ret, _ = self.in_packet.read_byte()
+        ret, flags = self.in_packet.read_byte()
         if ret != NC.ERR_SUCCESS:
             self.logger.error("error read byte")
             return ret
         
-        ret, result = self.in_packet.read_byte()
+        # useful for v3.1.1 only
+        session_present = flags & 0x01
+
+        ret, retcode = self.in_packet.read_byte()
         if ret != NC.ERR_SUCCESS:
             return ret
         
-        evt = event.EventConnack(result)
+        evt = event.EventConnack(retcode, session_present)
         self.push_event(evt)
         
-        if result == NC.CONNECT_ACCEPTED:
+        if retcode == NC.CONNECT_ACCEPTED:
             self.state = NC.CS_CONNECTED
             return NC.ERR_SUCCESS
         
-        elif result >= 1 and result <= 5:
+        elif retcode >= 1 and retcode <= 5:
             return NC.ERR_CONN_REFUSED
         else:
             return NC.ERR_PROTOCOL
@@ -356,7 +359,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             
             i += 1
         
-        evt = event.EventSuback(mid, granted_qos)
+        evt = event.EventSuback(mid, list(granted_qos))
         self.push_event(evt)
         
         granted_qos = None

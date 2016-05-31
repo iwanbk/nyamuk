@@ -18,9 +18,11 @@ class BaseEvent:
 
 class EventConnack(BaseEvent):
     """CONNACK received."""
-    def __init__(self, ret_code):
+    def __init__(self, ret_code, session_present = 0):
         BaseEvent.__init__(self, NC.CMD_CONNACK)
         self.ret_code = ret_code
+        # v3.1.1 only
+        self.session_present = session_present
 
 class EventPublish(BaseEvent):
     """PUBLISH received."""
