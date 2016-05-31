@@ -4,7 +4,7 @@ MQTT Packet
 '''
 import sys
 
-from . import utf8encode
+from utils import utf8encode
 import nyamuk_const as NC
 import nyamuk_net
 
