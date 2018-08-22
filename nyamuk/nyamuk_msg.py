@@ -16,7 +16,7 @@ class NyamukMsg:
         self.retain = retain
 
 class NyamukMsgAll:
-    
+
     def __init__(self):
         #next
         self.timestamp = time.time()

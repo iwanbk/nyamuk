@@ -51,7 +51,7 @@ def handle_pubcomp(ev, ny):
         print "\tunknown msgid"; return False
 
 
-def start_nyamuk(server = 'localhost', port = 1883, client_id = None, topic = None, msg = None, username = None, 
+def start_nyamuk(server = 'localhost', port = 1883, client_id = None, topic = None, msg = None, username = None,
                  password = None, version = 3, **kwargs):
     ny = nyamuk.Nyamuk(client_id, username, password, server=server, port=port)
     rc = ny.connect(version=version)

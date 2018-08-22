@@ -30,7 +30,7 @@ try:
         evt = nloop(client)
         if isinstance(evt, EventPublish):
             print 'we received a message: {0} (topic= {1})'.format(evt.msg.payload, evt.msg.topic)
-            
+
             # received message is either qos 0 or 1
             # in case of qos 1, we must send back PUBACK message with same packet-id
             if evt.msg.qos == 1:
