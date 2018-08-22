@@ -13,8 +13,9 @@ EV_NET_ERR = 1000
 
 class BaseEvent:
     """Event Base Class."""
-    def __init__(self, tipe):
+    def __init__(self, tipe, props=[]):
         self.type = tipe
+        self.props = props
 
 class EventConnack(BaseEvent):
     """CONNACK received."""
@@ -26,8 +27,8 @@ class EventConnack(BaseEvent):
 
 class EventPublish(BaseEvent):
     """PUBLISH received."""
-    def __init__(self, msg):
-        BaseEvent.__init__(self, NC.CMD_PUBLISH)
+    def __init__(self, msg, props=[]):
+        BaseEvent.__init__(self, NC.CMD_PUBLISH, props)
         self.msg = msg
 
 class EventSuback(BaseEvent):

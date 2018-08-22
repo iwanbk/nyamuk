@@ -7,6 +7,7 @@ import sys
 from utils import utf8encode
 import nyamuk_const as NC
 import nyamuk_net
+from nyamuk_prop import NyamukProp
 
 class MqttPkt:
     """An mqtt packet."""
@@ -97,16 +98,23 @@ class MqttPkt:
         self.to_process = 0
         self.pos = 0
 
-    def connect_build(self, nyamuk, keepalive, clean_session, retain = 0, dup = 0, version = 3):
+    def connect_build(self, nyamuk, keepalive, clean_session, retain = 0, dup = 0, version = 3,
+            props = []):
         """Build packet for CONNECT command."""
         will = 0; will_topic = None
         byte = 0
+
+        specs = NC.specs[version]
+
+        props_len = 0
+        if version >= 5:
+            props_len = reduce(lambda x,y: x + y.len(), props, 0)
 
         client_id = utf8encode(nyamuk.client_id)
         username  = utf8encode(nyamuk.username) if nyamuk.username is not None else None
         password  = utf8encode(nyamuk.password) if nyamuk.password is not None else None
 
-        #payload len
+        # payload len
         payload_len = 2 + len(client_id)
         if nyamuk.will is not None:
             will = 1
@@ -120,15 +128,16 @@ class MqttPkt:
                 payload_len = payload_len + 2 + len(password)
 
         self.command = NC.CMD_CONNECT
-        self.remaining_length = 12 + payload_len
+        self.remaining_length = specs['hdrsize'] + payload_len + props_len + NC.len_var_bytes_int(props_len)
+        #print("len=", self.remaining_length, payload_len, props_len, NC.len_var_bytes_int(props_len))
 
         rc = self.alloc()
         if rc != NC.ERR_SUCCESS:
             return rc
 
-        #var header
-        self.write_string(getattr(NC, 'PROTOCOL_NAME_{0}'.format(version)))
-        self.write_byte(  getattr(NC, 'PROTOCOL_VERSION_{0}'.format(version)))
+        # var header
+        self.write_string(specs['name'])
+        self.write_byte(version)
 
         byte = (clean_session & 0x1) << 1
 
@@ -142,10 +151,23 @@ class MqttPkt:
 
         self.write_byte(byte)
         self.write_uint16(keepalive)
-        #payload
+
+        ## mqtt5: properties
+        if version >= 5:
+            NC.write_varbyteint(self, props_len)
+
+            for prop in props:
+                prop.write(self)
+
+        # payload
         self.write_string(client_id)
 
         if will:
+            if version >= 5:
+                # 5.0 version: will content encoded as properties
+                #TODO: after NyamukMsg update (add properties)
+                pass
+
             self.write_string(will_topic)
             self.write_string(nyamuk.will.payload)
 
@@ -176,7 +198,9 @@ class MqttPkt:
     def write_bytes(self, data, n):
         """Write n number of bytes to this packet."""
         for pos in xrange(0, n):
-            self.payload[self.pos + pos] = data[pos]
+            # TODO: unicode character to bytearray field
+            #       how to convert properly ?
+            self.payload[self.pos + pos] = str(data[pos])
 
         self.pos += n
 
@@ -202,6 +226,24 @@ class MqttPkt:
         word = (msb << 8) + lsb
 
         return NC.ERR_SUCCESS, word
+
+    def read_varint(self):
+        lshift = 0
+        value  = 0
+
+        for i in range(4):
+            byte      = self.payload[self.pos]
+            self.pos += 1
+            value     = (byte & 0x7F) << lshift
+            if byte & 0x80 == 0:
+                break
+
+            lshift += 7
+
+        if byte & 0x80 != 0:
+            raise Exception("varint overflow")
+
+        return NC.ERR_SUCCESS, value
 
     def read_bytes(self, count):
         """Read count number of bytes."""

@@ -248,14 +248,20 @@ class BaseNyamuk:
 
         return True
 
-    def build_publish_pkt(self, mid, topic, payload, qos, retain, dup):
+    def build_publish_pkt(self, mid, topic, payload, qos, retain, dup, props=[]):
         """Build PUBLISH packet."""
         pkt = MqttPkt()
         payloadlen = len(payload)
         packetlen = 2 + len(topic) + payloadlen
 
+        # packet identifier (when qos > 0)
         if qos > 0:
             packetlen += 2
+
+        props_len = 0
+        if self.version >= 5:
+            props_len += reduce(lambda x, y: x + y.len(), props, 0)
+            packetlen += NC.len_var_bytes_int(props_len) + props_len
 
         pkt.mid = mid
         pkt.command = NC.CMD_PUBLISH | ((dup & 0x1) << 3) | (qos << 1) | retain
@@ -270,6 +276,14 @@ class BaseNyamuk:
 
         if qos > 0:
             pkt.write_uint16(mid)
+
+        # mqtt 5.0: properties
+        if self.version >= 5:
+            print("props len=", props_len)
+            NC.write_varbyteint(pkt, props_len)
+
+            for prop in props:
+                prop.write(pkt)
 
         #payloadlen
         if payloadlen > 0:

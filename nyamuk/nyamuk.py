@@ -15,6 +15,7 @@ import base_nyamuk
 import nyamuk_const as NC
 from mqtt_pkt import MqttPkt
 from nyamuk_msg import NyamukMsgAll, NyamukMsg
+from nyamuk_prop import NyamukProp
 import nyamuk_net
 import event
 from utils import utf8encode
@@ -129,8 +130,11 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
     # will = None | {'topic': Topic, 'message': Msg, 'qos': 0|1|2, retain=True|False}
     # will message, qos and retain are optional (default to empty string, 0 qos and False retain)
     #
-    def connect(self, version = 3, clean_session = 1, will = None):
+    def connect(self, version = 3, clean_session = 1, will = None, properties = []):
         """Connect to server."""
+        # NOTE: we store the version
+        self.version       = version
+
         self.clean_session = clean_session
         self.will          = None
 
@@ -146,7 +150,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
 
         #CONNECT packet
         pkt = MqttPkt()
-        pkt.connect_build(self, self.keep_alive, clean_session, version = version)
+        pkt.connect_build(self, self.keep_alive, clean_session, version = version, props = properties)
 
         #create socket
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -179,26 +183,29 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
 
         return self.packet_queue(pkt)
 
-    def disconnect(self):
+    def disconnect(self, reason=0, props=[]):
         """Disconnect from server."""
         self.logger.info("DISCONNECT")
         if self.sock == NC.INVALID_SOCKET:
             return NC.ERR_NO_CONN
         self.state = NC.CS_DISCONNECTING
 
-        ret = self.send_disconnect()
+        ret = self.send_disconnect(reason, props)
         ret2, bytes_written = self.packet_write()
 
         self.socket_close()
         return ret
 
-    def subscribe(self, topic, qos):
-        """Subscribe to some topic."""
+    def subscribe(self, topic, qos, props=[]):
+        """Subscribe to some topic.
+
+            TODO: mqtt 5.0 - handle other topic options, and properties
+        """
         if self.sock == NC.INVALID_SOCKET:
             return NC.ERR_NO_CONN
 
         self.logger.info("SUBSCRIBE: %s", topic)
-        return self.send_subscribe(False, [(utf8encode(topic), qos)])
+        return self.send_subscribe(False, [(utf8encode(topic), qos)], props)
 
     # subscribe to multiple topic filters at once
     def subscribe_multi(self, topics):
@@ -225,16 +232,53 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         self.logger.info("UNSUBSCRIBE: %s", ', '.join(topics))
         return self.send_unsubscribe(False, [utf8encode(topic) for topic in topics])
 
-    def send_disconnect(self):
+    def send_disconnect(self, reason=0, props=[]):
         """Send disconnect command."""
-        return self.send_simple_command(NC.CMD_DISCONNECT)
+        pkt = MqttPkt()
+        pktlen = 0
+
+        props_len = 0
+        if self.version >= 5:
+            props_len += reduce(lambda x, y: x + y.len(), props, 0)
+            pktlen    += NC.len_var_bytes_int(reason) + NC.len_var_bytes_int(props_len) + props_len
+
+        pkt.command = NC.CMD_DISCONNECT
+        pkt.remaining_length = pktlen
+
+        ret = pkt.alloc()
+        if ret != NC.ERR_SUCCESS:
+            return ret
+
+        # mqtt 5.0: reason code + properties
+        if self.version >= 5:
+            NC.write_varbyteint(pkt, reason)
+            NC.write_varbyteint(pkt, props_len)
+
+            for prop in props:
+                prop.write(pkt)
+
+        return self.packet_queue(pkt)
 
     # topics: [(topic, qos)]
-    def send_subscribe(self, dup, topics):
-        """Send subscribe COMMAND to server."""
+    def send_subscribe(self, dup, topics, props=[]):
+        """Send subscribe COMMAND to server.
+
+            topics is list of couples (topic filter, subscriber options)
+            - topic filter contains regular characters & wildcards (see section 4.7)
+            - subscriber options is composed of qos value and (for mqtt 5.0) no local/retain opts
+
+        """
         pkt = MqttPkt()
 
-        pktlen = 2 + sum([2+len(topic)+1 for (topic, qos) in topics])
+        pktlen = 2 + sum([2+len(topic)+1 for (topic, opts) in topics])
+
+        props_len = 0
+        if self.version >= 5:
+            props_len += reduce(lambda x, y: x + y.len(), props, 0)
+            pktlen    += NC.len_var_bytes_int(props_len) + props_len
+
+        #TODO: dup bitflag is only for mqtt 3.1
+        #       MUST BE 0 for mqtt 3.1.1 & 5.0
         pkt.command = NC.CMD_SUBSCRIBE | (dup << 3) | (1 << 1)
         pkt.remaining_length = pktlen
 
@@ -245,6 +289,13 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         #variable header
         mid = self.mid_generate()
         pkt.write_uint16(mid)
+
+        # mqtt 5.0: properties
+        if self.version >= 5:
+            NC.write_varbyteint(pkt, props_len)
+
+            for prop in props:
+                prop.write(pkt)
 
         #payload
         for (topic, qos) in topics:
@@ -275,7 +326,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
 
         return self.packet_queue(pkt)
 
-    def publish(self, topic, payload = None, qos = 0, retain = False):
+    def publish(self, topic, payload = None, qos = 0, retain = False, props=[]):
         """Publish some payload to server."""
         #print "PUBLISHING (",topic,"): ", payload
         payloadlen = len(payload)
@@ -292,7 +343,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         mid = self.mid_generate()
 
         if qos in (0,1,2):
-            return self.send_publish(mid, topic, payload, qos, retain, False)
+            return self.send_publish(mid, topic, payload, qos, retain, False, props)
 
         else:
             self.logger.error("Unsupport QoS= %d", qos)
@@ -307,12 +358,35 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             self.logger.error("error read byte")
             return ret
 
-        # useful for v3.1.1 only
+        # useful for >= v3.1.1 only
         session_present = flags & 0x01
 
         ret, retcode = self.in_packet.read_byte()
         if ret != NC.ERR_SUCCESS:
             return ret
+
+        # mqtt 5.0: properties
+        if self.version >= 5:
+            ret, props_len = self.in_packet.read_varint()
+
+            props = []
+            curlen = 0
+            while True:
+                ret, prop_name = self.in_packet.read_varint()
+                prop_type = NC.PROPS_DATA_TYPE[prop_name]
+                ret, value = NC.DATATYPE_RW_OPS[prop_type][1](self.in_packet)
+
+                props.append(NyamukProp(prop_name, value))
+                curlen += props[-1].len()
+                #print(ret, prop_name, prop_type, value, curlen)
+                if curlen >= props_len:
+                    break
+
+            if curlen != props_len:
+                # invalid count: must close connection
+                return NC.INVAL
+
+            #print(props)
 
         evt = event.EventConnack(retcode, session_present)
         self.push_event(evt)
@@ -341,6 +415,31 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         if ret != NC.ERR_SUCCESS:
             return ret
 
+        # mqtt 5.0: properties
+        if self.version >= 5:
+            ret, props_len = self.in_packet.read_varint()
+
+            props = []
+            if props_len > 0:
+                curlen = 0
+                while True:
+                    ret, prop_name = self.in_packet.read_varint()
+                    prop_type = NC.PROPS_DATA_TYPE[prop_name]
+                    ret, value = NC.DATATYPE_RW_OPS[prop_type][1](self.in_packet)
+
+                    props.append(NyamukProp(prop_name, value))
+                    curlen += props[-1].len()
+                    #print(ret, prop_name, prop_type, value, curlen)
+                    if curlen >= props_len:
+                        break
+
+                if curlen != props_len:
+                    # invalid count: must close connection
+                    return NC.INVAL
+
+            #print(props)
+
+        # payload
         qos_count = self.in_packet.remaining_length - self.in_packet.pos
         granted_qos = bytearray(qos_count)
 
@@ -410,6 +509,31 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             if ret != NC.ERR_SUCCESS:
                 return ret
 
+        # mqtt 5.0: properties
+        props = []
+        if self.version >= 5:
+            ret, props_len = self.in_packet.read_varint()
+
+            if props_len > 0:
+                curlen = 0
+                while True:
+                    ret, prop_name = self.in_packet.read_varint()
+                    prop_type = NC.PROPS_DATA_TYPE[prop_name]
+                    ret, value = NC.DATATYPE_RW_OPS[prop_type][1](self.in_packet)
+
+                    props.append(NyamukProp(prop_name, value))
+                    curlen += props[-1].len()
+                    #print(ret, prop_name, prop_type, value, curlen)
+                    if curlen >= props_len:
+                        break
+
+                if curlen != props_len:
+                    # invalid count: must close connection
+                    return NC.INVAL
+
+            #print(props)
+
+        # payload
         message.msg.payloadlen = self.in_packet.remaining_length - self.in_packet.pos
 
         if message.msg.payloadlen > 0:
@@ -425,7 +549,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         qos = message.msg.qos
 
         if qos in (0,1,2):
-            evt = event.EventPublish(message.msg)
+            evt = event.EventPublish(message.msg, props)
             self.push_event(evt)
 
             return NC.ERR_SUCCESS
@@ -435,7 +559,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
 
         return NC.ERR_SUCCESS
 
-    def send_publish(self, mid, topic, payload, qos, retain, dup):
+    def send_publish(self, mid, topic, payload, qos, retain, dup, props=[]):
         """Send PUBLISH."""
         self.logger.debug("Send PUBLISH")
         if self.sock == NC.INVALID_SOCKET:
@@ -443,10 +567,11 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
 
         #NOTE: payload may be any kind of data
         #      yet if it is a unicode string we utf8-encode it as convenience
-        return self._do_send_publish(mid, utf8encode(topic), utf8encode(payload), qos, retain, dup)
+        return self._do_send_publish(mid, utf8encode(topic), utf8encode(payload), qos, retain, dup,
+            props)
 
-    def _do_send_publish(self, mid, topic, payload, qos, retain, dup):
-        ret, pkt = self.build_publish_pkt(mid, topic, payload, qos, retain, dup)
+    def _do_send_publish(self, mid, topic, payload, qos, retain, dup, props=[]):
+        ret, pkt = self.build_publish_pkt(mid, topic, payload, qos, retain, dup, props)
         if ret != NC.ERR_SUCCESS:
             return ret
 
@@ -508,7 +633,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
 
         return NC.ERR_SUCCESS
 
-    def puback(self, mid):
+    def puback(self, mid, reason=0, props=[]):
         """Send PUBACK response to server."""
         if self.sock == NC.INVALID_SOCKET:
             return NC.ERR_NO_CONN
@@ -518,6 +643,17 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
 
         pkt.command = NC.CMD_PUBACK
         pkt.remaining_length = 2
+        # mqtt 5.0
+        props_len = 0
+        if self.version >= 5:
+            props_len += reduce(lambda x, y: x + y.len(), props, 0)
+
+            # reason code + properties length + properties
+            pkt.remaining_length += 1
+            # NOTE: according to specs (3.4.2.2.1) properties length field is optional
+            #       if there's no properties
+            #       but to remain compliant with bad server implementation, we add it anyway
+            pkt.remaining_length += NC.len_var_bytes_int(props_len) + props_len
 
         ret = pkt.alloc()
         if ret != NC.ERR_SUCCESS:
@@ -525,6 +661,13 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
 
         #variable header: acknowledged message id
         pkt.write_uint16(mid)
+
+        if self.version >= 5:
+            pkt.write_byte(reason)
+
+            NC.write_varbyteint(pkt, props_len)
+            for prop in props:
+                prop.write(pkt)
 
         return self.packet_queue(pkt)
 
