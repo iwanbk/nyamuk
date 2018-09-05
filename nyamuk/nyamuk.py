@@ -16,7 +16,6 @@ import nyamuk_const as NC
 from mqtt_pkt import MqttPkt
 import mqtt_types as t
 from nyamuk_msg import NyamukMsgAll, NyamukMsg
-from nyamuk_prop import NyamukProp, PROPS_DATA
 import nyamuk_net
 import event
 from utils import utf8encode

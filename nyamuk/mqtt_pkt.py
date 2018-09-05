@@ -358,12 +358,11 @@ class MqttPkt:
         props  = []
         while True:
             ret, prop_id = self.read_varint()
-            prop_type    = PROPS_DATA[prop_id][0]
+            prop_type    = get_property_type(prop_id)
+            #TODO: check returned value
             ret, value   = getattr(self, t.DATATYPE_OPS[prop_type][t.DATATYPE_RD])()
 
-            prop_klass = PROPS_DATA[prop_id][PROP_DATA_CLASS]
-            prop = prop_klass(prop_id, value) if prop_klass == NyamukProp else prop_klass(value)
-
+            prop = get_property_instance(prop_id, value)
             props.append(prop)
             curlen += prop.len()
             #print(ret, prop_name, prop_type, value, curlen)
