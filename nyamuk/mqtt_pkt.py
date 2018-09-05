@@ -4,10 +4,11 @@ MQTT Packet
 '''
 import sys
 
-from utils import utf8encode
+from utils import *
 import nyamuk_const as NC
 import nyamuk_net
-from nyamuk_prop import NyamukProp
+from nyamuk_prop import *
+import mqtt_types as t
 
 class MqttPkt:
     """An mqtt packet."""
@@ -58,6 +59,8 @@ class MqttPkt:
         loop_flag = True
 
         #self.dump()
+        # computing remaining length field
+        # is a varint (from 1 to 4 bytes)
         while loop_flag:
             byte = remaining_length % 128
             remaining_length = remaining_length / 128
@@ -74,7 +77,10 @@ class MqttPkt:
         if self.remaining_count == 5:
             return NC.ERR_PAYLOAD_SIZE
 
-        self.packet_length = self.remaining_length + 1 + self.remaining_count
+        # MQTT header (1 byte) + remaining length count + headers & payload
+        self.packet_length = 1 + self.remaining_count + self.remaining_length
+        #print('allocating {0} bytearray (remaining lengh field size= {1})'.format(
+        #    self.packet_length, self.remaining_count))
         self.payload = bytearray(self.packet_length)
 
         self.payload[0] = self.command
@@ -128,15 +134,16 @@ class MqttPkt:
                 payload_len = payload_len + 2 + len(password)
 
         self.command = NC.CMD_CONNECT
-        self.remaining_length = specs['hdrsize'] + payload_len + props_len + NC.len_var_bytes_int(props_len)
-        #print("len=", self.remaining_length, payload_len, props_len, NC.len_var_bytes_int(props_len))
+        self.remaining_length = specs['hdrsize'] + payload_len + props_len + \
+            t.len_varint(props_len)
+        #print("len=", self.remaining_length, payload_len, props_len, t.len_varint(props_len))
 
         rc = self.alloc()
         if rc != NC.ERR_SUCCESS:
             return rc
 
         # var header
-        self.write_string(specs['name'])
+        self.write_utf8(specs['name'])
         self.write_byte(version)
 
         byte = (clean_session & 0x1) << 1
@@ -154,13 +161,13 @@ class MqttPkt:
 
         ## mqtt5: properties
         if version >= 5:
-            NC.write_varbyteint(self, props_len)
+            self.write_varint(props_len)
 
             for prop in props:
                 prop.write(self)
 
         # payload
-        self.write_string(client_id)
+        self.write_utf8(client_id)
 
         if will:
             if version >= 5:
@@ -168,32 +175,49 @@ class MqttPkt:
                 #TODO: after NyamukMsg update (add properties)
                 pass
 
-            self.write_string(will_topic)
-            self.write_string(nyamuk.will.payload)
+            self.write_utf8(will_topic)
+            self.write_utf8(nyamuk.will.payload)
 
         if username is not None:
-            self.write_string(username)
+            self.write_utf8(username)
             if password is not None:
-                self.write_string(password)
+                self.write_utf8(password)
 
         nyamuk.keep_alive = keepalive
 
         return NC.ERR_SUCCESS
 
-    def write_string(self, string):
-        """Write a string to this packet."""
-        self.write_uint16(len(string))
-        self.write_bytes(string, len(string))
+    def write_byte(self, byte):
+        """Write one byte."""
+        #print('write byte:', self.pos)
+        self.payload[self.pos] = byte
+        self.pos = self.pos + 1
 
     def write_uint16(self, word):
         """Write 2 bytes."""
         self.write_byte(nyamuk_net.MOSQ_MSB(word))
         self.write_byte(nyamuk_net.MOSQ_LSB(word))
 
-    def write_byte(self, byte):
-        """Write one byte."""
-        self.payload[self.pos] = byte
-        self.pos = self.pos + 1
+    def write_uint32(self, value):
+        """Write 4 bytes."""
+        self.payload[self.pos]   = value & 0xFF000000 >> 24
+        self.payload[self.pos+1] = value & 0x00FF0000 >> 16
+        self.payload[self.pos+2] = value & 0x0000FF00 >> 8
+        self.payload[self.pos+3] = value & 0x000000FF
+
+        self.pos = self.pos + 4
+
+    def write_varint(self, value):
+        while True:
+            enc    = value % 128
+            value /= 128
+            if value > 0:
+                enc |= 128
+
+            self.write_byte(enc)
+
+            if value <= 0:
+                break
 
     def write_bytes(self, data, n):
         """Write n number of bytes to this packet."""
@@ -203,6 +227,22 @@ class MqttPkt:
             self.payload[self.pos + pos] = str(data[pos])
 
         self.pos += n
+
+    def write_utf8(self, string):
+        """Write a string to this packet."""
+        #print('write utf8:', string, self.pos)
+        self.write_uint16(len(string))
+        self.write_bytes(string, len(string))
+
+    def write_utf8_pair(self, (key, value)):
+        self.write_utf8(key)
+        self.write_utf8(value)
+
+    def write_props(self, props, propslen=None):
+        propslen = propslen if propslen is not None else reduce(lambda x, y: x + y.len(), props, 0)
+        self.write_varint(propslen)
+        for p in props:
+            p.write(self)
 
     def read_byte(self):
         """Read a byte."""
@@ -224,6 +264,23 @@ class MqttPkt:
         self.pos += 1
 
         word = (msb << 8) + lsb
+
+        return NC.ERR_SUCCESS, word
+
+    def read_uint32(self):
+        """Read 4 bytes.
+
+            NOTE: use struct.unpack
+        """
+        if self.pos + 4 > self.remaining_length:
+            return NC.ERR_PROTOCOL
+        a = self.payload[self.pos]
+        b = self.payload[self.pos+1]
+        c = self.payload[self.pos+2]
+        d = self.payload[self.pos+3]
+        self.pos += 4
+
+        word = (a << 24) + (b << 16) + (c << 8) + d
 
         return NC.ERR_SUCCESS, word
 
@@ -257,8 +314,13 @@ class MqttPkt:
 
         return NC.ERR_SUCCESS, ba
 
-    def read_string(self):
-        """Read string."""
+    def read_utf8(self):
+        """Read utf-8 string.
+
+            TODO:
+                - return string as utf8
+                - optimize
+        """
         rc, length = self.read_uint16()
 
         if rc != NC.ERR_SUCCESS:
@@ -276,3 +338,41 @@ class MqttPkt:
             self.pos += 1
 
         return NC.ERR_SUCCESS, ba
+
+    def read_utf8_pair(self):
+        ret, key   = self.read_utf8()
+        ret, value = self.read_utf8()
+
+        return ret, (key, value)
+
+    def read_props(self):
+        """
+            read properties
+        """
+        ret, props_len = self.read_varint()
+        if props_len == 0:
+            return NC.ERR_SUCCESS, []
+
+        #print("read props")
+        curlen = 0
+        props  = []
+        while True:
+            ret, prop_id = self.read_varint()
+            prop_type    = PROPS_DATA[prop_id][0]
+            ret, value   = getattr(self, t.DATATYPE_OPS[prop_type][t.DATATYPE_RD])()
+
+            prop_klass = PROPS_DATA[prop_id][PROP_DATA_CLASS]
+            prop = prop_klass(prop_id, value) if prop_klass == NyamukProp else prop_klass(value)
+
+            props.append(prop)
+            curlen += prop.len()
+            #print(ret, prop_name, prop_type, value, curlen)
+            if curlen >= props_len:
+                break
+
+        if curlen != props_len:
+            # invalid count: must close connection
+            return NC.INVAL
+
+        return NC.ERR_SUCCESS, props
+

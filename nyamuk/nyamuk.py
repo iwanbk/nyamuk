@@ -14,8 +14,9 @@ import logging
 import base_nyamuk
 import nyamuk_const as NC
 from mqtt_pkt import MqttPkt
+import mqtt_types as t
 from nyamuk_msg import NyamukMsgAll, NyamukMsg
-from nyamuk_prop import NyamukProp
+from nyamuk_prop import NyamukProp, PROPS_DATA
 import nyamuk_net
 import event
 from utils import utf8encode
@@ -240,7 +241,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         props_len = 0
         if self.version >= 5:
             props_len += reduce(lambda x, y: x + y.len(), props, 0)
-            pktlen    += NC.len_var_bytes_int(reason) + NC.len_var_bytes_int(props_len) + props_len
+            pktlen    += t.len_varint(reason) + t.len_varint(props_len) + props_len
 
         pkt.command = NC.CMD_DISCONNECT
         pkt.remaining_length = pktlen
@@ -251,11 +252,8 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
 
         # mqtt 5.0: reason code + properties
         if self.version >= 5:
-            NC.write_varbyteint(pkt, reason)
-            NC.write_varbyteint(pkt, props_len)
-
-            for prop in props:
-                prop.write(pkt)
+            pkt.write_varint(reason)
+            pkt.write_props(props, props_len)
 
         return self.packet_queue(pkt)
 
@@ -275,7 +273,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         props_len = 0
         if self.version >= 5:
             props_len += reduce(lambda x, y: x + y.len(), props, 0)
-            pktlen    += NC.len_var_bytes_int(props_len) + props_len
+            pktlen    += t.len_varint(props_len) + props_len
 
         #TODO: dup bitflag is only for mqtt 3.1
         #       MUST BE 0 for mqtt 3.1.1 & 5.0
@@ -292,14 +290,11 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
 
         # mqtt 5.0: properties
         if self.version >= 5:
-            NC.write_varbyteint(pkt, props_len)
-
-            for prop in props:
-                prop.write(pkt)
+            pkt.write_props(props, props_len)
 
         #payload
         for (topic, qos) in topics:
-            pkt.write_string(topic)
+            pkt.write_utf8(topic)
             pkt.write_byte(qos)
 
         return self.packet_queue(pkt)
@@ -322,7 +317,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
 
         #payload
         for topic in topics:
-            pkt.write_string(topic)
+            pkt.write_utf8(topic)
 
         return self.packet_queue(pkt)
 
@@ -366,27 +361,9 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             return ret
 
         # mqtt 5.0: properties
+        props = []
         if self.version >= 5:
-            ret, props_len = self.in_packet.read_varint()
-
-            props = []
-            curlen = 0
-            while True:
-                ret, prop_name = self.in_packet.read_varint()
-                prop_type = NC.PROPS_DATA_TYPE[prop_name]
-                ret, value = NC.DATATYPE_RW_OPS[prop_type][1](self.in_packet)
-
-                props.append(NyamukProp(prop_name, value))
-                curlen += props[-1].len()
-                #print(ret, prop_name, prop_type, value, curlen)
-                if curlen >= props_len:
-                    break
-
-            if curlen != props_len:
-                # invalid count: must close connection
-                return NC.INVAL
-
-            #print(props)
+            ret, props = self.in_packet.read_props()
 
         evt = event.EventConnack(retcode, session_present)
         self.push_event(evt)
@@ -416,28 +393,9 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             return ret
 
         # mqtt 5.0: properties
+        props = []
         if self.version >= 5:
-            ret, props_len = self.in_packet.read_varint()
-
-            props = []
-            if props_len > 0:
-                curlen = 0
-                while True:
-                    ret, prop_name = self.in_packet.read_varint()
-                    prop_type = NC.PROPS_DATA_TYPE[prop_name]
-                    ret, value = NC.DATATYPE_RW_OPS[prop_type][1](self.in_packet)
-
-                    props.append(NyamukProp(prop_name, value))
-                    curlen += props[-1].len()
-                    #print(ret, prop_name, prop_type, value, curlen)
-                    if curlen >= props_len:
-                        break
-
-                if curlen != props_len:
-                    # invalid count: must close connection
-                    return NC.INVAL
-
-            #print(props)
+            ret, props = self.in_packet.read_props()
 
         # payload
         qos_count = self.in_packet.remaining_length - self.in_packet.pos
@@ -458,7 +416,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
 
             i += 1
 
-        evt = event.EventSuback(mid, list(granted_qos))
+        evt = event.EventSuback(mid, list(granted_qos), props=props)
         self.push_event(evt)
 
         granted_qos = None
@@ -496,7 +454,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         message.msg.qos = (header & 0x06) >> 1
         message.msg.retain = (header & 0x01)
 
-        ret, ba_data = self.in_packet.read_string()
+        ret, ba_data = self.in_packet.read_utf8()
         message.msg.topic = ba_data.decode('utf8')
 
         if ret != NC.ERR_SUCCESS:
@@ -512,26 +470,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         # mqtt 5.0: properties
         props = []
         if self.version >= 5:
-            ret, props_len = self.in_packet.read_varint()
-
-            if props_len > 0:
-                curlen = 0
-                while True:
-                    ret, prop_name = self.in_packet.read_varint()
-                    prop_type = NC.PROPS_DATA_TYPE[prop_name]
-                    ret, value = NC.DATATYPE_RW_OPS[prop_type][1](self.in_packet)
-
-                    props.append(NyamukProp(prop_name, value))
-                    curlen += props[-1].len()
-                    #print(ret, prop_name, prop_type, value, curlen)
-                    if curlen >= props_len:
-                        break
-
-                if curlen != props_len:
-                    # invalid count: must close connection
-                    return NC.INVAL
-
-            #print(props)
+            ret, props = self.in_packet.read_props()
 
         # payload
         message.msg.payloadlen = self.in_packet.remaining_length - self.in_packet.pos
@@ -549,7 +488,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         qos = message.msg.qos
 
         if qos in (0,1,2):
-            evt = event.EventPublish(message.msg, props)
+            evt = event.EventPublish(message.msg, props=props)
             self.push_event(evt)
 
             return NC.ERR_SUCCESS
@@ -653,7 +592,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             # NOTE: according to specs (3.4.2.2.1) properties length field is optional
             #       if there's no properties
             #       but to remain compliant with bad server implementation, we add it anyway
-            pkt.remaining_length += NC.len_var_bytes_int(props_len) + props_len
+            pkt.remaining_length += t.len_varint(props_len) + props_len
 
         ret = pkt.alloc()
         if ret != NC.ERR_SUCCESS:
@@ -664,10 +603,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
 
         if self.version >= 5:
             pkt.write_byte(reason)
-
-            NC.write_varbyteint(pkt, props_len)
-            for prop in props:
-                prop.write(pkt)
+            pkt.write_props(props, props_len)
 
         return self.packet_queue(pkt)
 

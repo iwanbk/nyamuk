@@ -8,3 +8,4 @@ def utf8encode(unistr):
         return unistr.encode('utf8')
 
     return unistr
+

@@ -7,6 +7,8 @@
 
 import sys
 from nyamuk import *
+from nyamuk import mqtt_types
+from nyamuk import nyamuk_prop as props
 
 def nloop(client):
     client.packet_write()     # flush write buffer (messages sent to MQTT server)
@@ -14,13 +16,16 @@ def nloop(client):
     return client.pop_event() # return 1st received message (dequeued)
 
 client = Nyamuk("test_nyamuk", server="localhost")
-ret = client.connect(version=5, properties=[NyamukProp(NC.PROP_USR_PROPERTY, (u"chou",u"pette"))])
+ret = client.connect(version=5, properties=[props.NyamukProp(props.PROP_USR_PROPERTY, (u"chou",u"pette"))])
+#ret = client.connect(version=5, props=[
+#        PropUser(u"chou", u"pette")
+#    ])
 
 ret = nloop(client) # ret should be EventConnack object
 if not isinstance(ret, EventConnack) or ret.ret_code != 0:
     print('connection failed'); sys.exit(1)
 
-client.subscribe('foo/bar', qos=1, props=[NyamukProp(NC.PROP_SUBSCR_ID, 42)])
+client.subscribe('foo/bar', qos=1, props=[props.NyamukProp(props.PROP_SUBSCR_ID, 42)])
 ret = nloop(client)
 if not isinstance(ret, EventSuback):
     print('SUBACK not received'); sys.exit(2)
@@ -34,7 +39,7 @@ try:
             if len(evt.props) > 0:
                 print(" properties:")
                 for p in evt.props:
-                    print("  {0} = {1}".format(NC.PROPS_NAME[p.name], p.value))
+                    print("  {0} = {1}".format(props.PROPS_DATA[p.id][1], p.value))
 
             # received message is either qos 0 or 1
             # in case of qos 1, we must send back PUBACK message with same packet-id

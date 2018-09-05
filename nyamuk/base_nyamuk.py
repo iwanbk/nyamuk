@@ -7,6 +7,7 @@ import time
 import errno
 
 from mqtt_pkt import MqttPkt
+import mqtt_types as t
 import nyamuk_const as NC
 import nyamuk_net
 import event
@@ -261,7 +262,7 @@ class BaseNyamuk:
         props_len = 0
         if self.version >= 5:
             props_len += reduce(lambda x, y: x + y.len(), props, 0)
-            packetlen += NC.len_var_bytes_int(props_len) + props_len
+            packetlen += t.len_varint(props_len) + props_len
 
         pkt.mid = mid
         pkt.command = NC.CMD_PUBLISH | ((dup & 0x1) << 3) | (qos << 1) | retain
@@ -272,7 +273,7 @@ class BaseNyamuk:
             return ret, None
 
         #variable header : Topic String
-        pkt.write_string(topic)
+        pkt.write_utf8(topic)
 
         if qos > 0:
             pkt.write_uint16(mid)
@@ -280,10 +281,7 @@ class BaseNyamuk:
         # mqtt 5.0: properties
         if self.version >= 5:
             print("props len=", props_len)
-            NC.write_varbyteint(pkt, props_len)
-
-            for prop in props:
-                prop.write(pkt)
+            pkt.write_props(props, props_len)
 
         #payloadlen
         if payloadlen > 0:

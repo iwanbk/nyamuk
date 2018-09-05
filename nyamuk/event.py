@@ -19,8 +19,8 @@ class BaseEvent:
 
 class EventConnack(BaseEvent):
     """CONNACK received."""
-    def __init__(self, ret_code, session_present = 0):
-        BaseEvent.__init__(self, NC.CMD_CONNACK)
+    def __init__(self, ret_code, session_present = 0, props=[]):
+        BaseEvent.__init__(self, NC.CMD_CONNACK, props=props)
         self.ret_code = ret_code
         # v3.1.1 only
         self.session_present = session_present
@@ -28,13 +28,13 @@ class EventConnack(BaseEvent):
 class EventPublish(BaseEvent):
     """PUBLISH received."""
     def __init__(self, msg, props=[]):
-        BaseEvent.__init__(self, NC.CMD_PUBLISH, props)
+        BaseEvent.__init__(self, NC.CMD_PUBLISH, props=props)
         self.msg = msg
 
 class EventSuback(BaseEvent):
     """SUBACK received."""
-    def __init__(self, mid, granted_qos):
-        BaseEvent.__init__(self, NC.CMD_SUBACK)
+    def __init__(self, mid, granted_qos, props=[]):
+        BaseEvent.__init__(self, NC.CMD_SUBACK, props=props)
         self.mid = mid
         self.granted_qos = granted_qos
 

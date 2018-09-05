@@ -7,6 +7,7 @@
 
 import sys
 from nyamuk import *
+from nyamuk import nyamuk_prop as props
 
 def nloop(client):
     client.packet_write()     # flush write buffer (messages sent to MQTT server)
@@ -20,8 +21,10 @@ if not isinstance(ret, EventConnack) or ret.ret_code != 0:
     print('connection failed'); sys.exit(1)
 
 client.publish('foo/bar', 'this is a test', qos=1, props=[
-        NyamukProp(NC.PROP_PAYLOAD_FORMAT_INDICATOR, 0x01),
-        NyamukProp(NC.PROP_USR_PROPERTY, (u"nyamuk", u"rocks")),
+        NyamukProp(props.PROP_PAYLOAD_FORMAT_INDICATOR, 0x01),
+#        NyamukProp(props.PROP_USR_PROPERTY, (u"nyamuk", u"rocks")),
+#        props.PayloadFmtIndicator(UTF8_FMT),
+        props.UserProperty((u"nyamuk", u"rocks"))
     ])
 ret = nloop(client) # ret should be EventPuback
 
