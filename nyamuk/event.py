@@ -46,9 +46,11 @@ class EventUnsuback(BaseEvent):
 
 class EventPuback(BaseEvent):
     """PUBACK received."""
-    def __init__(self, mid):
-        BaseEvent.__init__(self, NC.CMD_PUBACK)
-        self.mid = mid
+    def __init__(self, mid, reason=None, props=[]):
+        BaseEvent.__init__(self, NC.CMD_PUBACK, props=props)
+        self.mid    = mid
+        # v5 only
+        self.reason = reason
 
 class EventPubrec(BaseEvent):
     """PUBREC received."""

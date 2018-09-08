@@ -526,11 +526,20 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         self.logger.info("PUBACK received")
 
         ret, mid = self.in_packet.read_uint16()
+        reason = 0x00 # SUCCESS
+        props  = []
+        #NOTE: reason is optional (#3.4.2.1)
+        if self.version >= 5 and self.in_packet.remaining_length > 2:
+            ret, reason = self.in_packet.read_byte()
+
+            #NOTE: properties are optional (#3.4.2.2.1)
+            if self.in_packet.remaining_length >= 4:
+                ret, props  = self.in_packet.read_props()
 
         if ret != NC.ERR_SUCCESS:
             return ret
 
-        evt = event.EventPuback(mid)
+        evt = event.EventPuback(mid, reason=reason, props=props)
         self.push_event(evt)
 
         return NC.ERR_SUCCESS
