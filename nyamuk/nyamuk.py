@@ -19,6 +19,7 @@ from nyamuk_msg import NyamukMsgAll, NyamukMsg
 import nyamuk_net
 import event
 from utils import utf8encode
+from nyamuk_prop import *
 
 class Nyamuk(base_nyamuk.BaseNyamuk):
     """Nyamuk mqtt client class."""
@@ -363,6 +364,11 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         props = []
         if self.version >= 5:
             ret, props = self.in_packet.read_props()
+
+            # if CONNACK contains KeepAlive property, we must use that value as keepalive
+            ka = filter(lambda x: isinstance(x, ServerKeepAlive), props)
+            if len(ka) > 0:
+                self.keep_alive = ka[0].value
 
         evt = event.EventConnack(retcode, session_present)
         self.push_event(evt)
