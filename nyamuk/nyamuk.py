@@ -389,11 +389,13 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         evt = event.EventConnack(reason, session_present, props=props)
         self.push_event(evt)
 
-        if retcode == NC.CONNECT_ACCEPTED:
+        if reason == NC.CONNECT_ACCEPTED:
             self.state = NC.CS_CONNECTED
             return NC.ERR_SUCCESS
 
-        elif retcode >= 1 and retcode <= 5:
+        # mqtt < 5.0 reason code is always < 6
+        # mqtt 5.0 reason code is 0 or >= 128
+        elif reason >= 1 and reason <= 5:
             return NC.ERR_CONN_REFUSED
         else:
             return NC.ERR_PROTOCOL
