@@ -20,6 +20,7 @@ import nyamuk_net
 import event
 from utils import utf8encode
 from nyamuk_prop import *
+import mqtt_reasons as r
 
 class Nyamuk(base_nyamuk.BaseNyamuk):
     """Nyamuk mqtt client class."""
@@ -219,23 +220,23 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         self.logger.info("SUBSCRIBE: %s", ', '.join([t for (t,q) in topics]))
         return self.send_subscribe(False, [(utf8encode(topic), qos) for (topic, qos) in topics])
 
-    def unsubscribe(self, topic):
+    def unsubscribe(self, topic, props=[]):
         """Unsubscribe to some topic."""
         if self.sock == NC.INVALID_SOCKET:
             return NC.ERR_NO_CONN
 
         self.logger.info("UNSUBSCRIBE: %s", topic)
-        return self.send_unsubscribe([utf8encode(topic)])
+        return self.send_unsubscribe(props, [utf8encode(topic)])
 
-    def unsubscribe_multi(self, topics):
+    def unsubscribe_multi(self, topics, props=[]):
         """Unsubscribe to some topics."""
         if self.sock == NC.INVALID_SOCKET:
             return NC.ERR_NO_CONN
 
         self.logger.info("UNSUBSCRIBE: %s", ', '.join(topics))
-        return self.send_unsubscribe([utf8encode(topic) for topic in topics])
+        return self.send_unsubscribe(props, [utf8encode(topic) for topic in topics])
 
-    def send_disconnect(self, reason=0, props=[]):
+    def send_disconnect(self, reason=r.REASON_NORMAL_DISCONN, props=[]):
         """Send disconnect command."""
         pkt = MqttPkt()
         pktlen = 0
@@ -301,23 +302,34 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
 
         return self.packet_queue(pkt)
 
-    def send_unsubscribe(self, topics):
+    def send_unsubscribe(self, props, topics):
         """Send unsubscribe COMMAND to server."""
         pkt = MqttPkt()
 
-        pktlen = 2 + sum([2+len(topic) for topic in topics])
-        pkt.command = NC.CMD_UNSUBSCRIBE | (1 << 1)
+        # remaining length
+        #   packet identifier + payload + props length
+        pktlen    = 2 + sum([2+len(topic) for topic in topics])
+        props_len = 0
+        if self.version >= 5:
+            props_len += reduce(lambda x, y: x + y.len(), props, 0)
+            pktlen    += t.len_varint(props_len) + props_len
+
+        pkt.command = NC.CMD_UNSUBSCRIBE | 0x02
         pkt.remaining_length = pktlen
 
         ret = pkt.alloc()
         if ret != NC.ERR_SUCCESS:
             return ret
 
-        #variable header
+        # variable header
         mid = self.mid_generate()
         pkt.write_uint16(mid)
 
-        #payload
+        # mqtt 5.0: properties
+        if self.version >= 5:
+            pkt.write_props(props, props_len)
+
+        # payload
         for topic in topics:
             pkt.write_utf8(topic)
 
@@ -372,7 +384,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             if len(ka) > 0:
                 self.keep_alive = ka[0].value
 
-        evt = event.EventConnack(retcode, session_present)
+        evt = event.EventConnack(reason, session_present, props=props)
         self.push_event(evt)
 
         if retcode == NC.CONNECT_ACCEPTED:
@@ -439,7 +451,12 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         if ret != NC.ERR_SUCCESS:
             return ret
 
-        evt = event.EventUnsuback(mid)
+        # mqtt 5.0: properties
+        props = []
+        if self.version >= 5:
+            ret, props = self.in_packet.read_props()
+
+        evt = event.EventUnsuback(mid, props)
         self.push_event(evt)
 
         return NC.ERR_SUCCESS
@@ -592,16 +609,24 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         """Handle incoming DISCONNECT packet."""
         self.logger.info("DISCONNECT received")
 
-        ret, reason = self.in_packet.read_byte()
+        reason = r.REASON_NORMAL_DISCONN
+        props  = []
+        # mqtt 5.0: reason is optional (default NORMAL_DISCONNECT)
+        if self.version and self.in_packet.remaining_length > 0:
+            ret, reason = self.in_packet.read_byte()
+
+            if self.in_packet.remaining_length > 1:
+                ret, props  = self.in_packet.read_props()
+
         if ret != NC.ERR_SUCCESS:
             return ret
 
-        evt = event.EventDisconnect(reason)
+        evt = event.EventDisconnect(reason, props=props)
         self.push_event(evt)
 
         return NC.ERR_SUCCESS
 
-    def puback(self, mid, reason=0, props=[]):
+    def puback(self, mid, reason=r.REASON_SUCCESS, props=[]):
         """Send PUBACK response to server."""
         if self.sock == NC.INVALID_SOCKET:
             return NC.ERR_NO_CONN

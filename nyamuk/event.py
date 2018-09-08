@@ -40,8 +40,8 @@ class EventSuback(BaseEvent):
 
 class EventUnsuback(BaseEvent):
     """UNSUBACK received."""
-    def __init__(self, mid):
-        BaseEvent.__init__(self, NC.CMD_UNSUBACK)
+    def __init__(self, mid, props=[]):
+        BaseEvent.__init__(self, NC.CMD_UNSUBACK, props=props)
         self.mid = mid
 
 class EventPuback(BaseEvent):
@@ -84,7 +84,7 @@ class EventPingResp(BaseEvent):
 
 class EventDisconnect(BaseEvent):
     """DISCONNECT message received."""
-    def __init__(self, reason):
-        BaseEvent.__init__(self, NC.CMD_DISCONNECT)
+    def __init__(self, reason, props=[]):
+        BaseEvent.__init__(self, NC.CMD_DISCONNECT, props=props)
 
         self.reason = reason
