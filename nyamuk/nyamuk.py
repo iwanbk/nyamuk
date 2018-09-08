@@ -123,6 +123,8 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             sys.exit(-1)
         elif cmd == NC.CMD_UNSUBACK:
             return self.handle_unsuback()
+        elif cmd == NC.CMD_DISCONNECT:
+            return self.handle_disconnect()
         else:
             self.logger.warning("Unknown protocol. Cmd = %d", cmd)
             return NC.ERR_PROTOCOL
@@ -582,6 +584,19 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             return ret
 
         evt = event.EventPubcomp(mid)
+        self.push_event(evt)
+
+        return NC.ERR_SUCCESS
+
+    def handle_disconnect(self):
+        """Handle incoming DISCONNECT packet."""
+        self.logger.info("DISCONNECT received")
+
+        ret, reason = self.in_packet.read_byte()
+        if ret != NC.ERR_SUCCESS:
+            return ret
+
+        evt = event.EventDisconnect(reason)
         self.push_event(evt)
 
         return NC.ERR_SUCCESS

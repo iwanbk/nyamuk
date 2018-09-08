@@ -81,3 +81,10 @@ class EventPingResp(BaseEvent):
     """PINGRESP received."""
     def __init__(self):
         BaseEvent.__init__(self, NC.CMD_PINGRESP)
+
+class EventDisconnect(BaseEvent):
+    """DISCONNECT message received."""
+    def __init__(self, reason):
+        BaseEvent.__init__(self, NC.CMD_DISCONNECT)
+
+        self.reason = reason
