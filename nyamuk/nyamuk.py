@@ -370,7 +370,9 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         # useful for >= v3.1.1 only
         session_present = flags & 0x01
 
-        ret, retcode = self.in_packet.read_byte()
+
+        # NOTE: in v5, "return code" is renamed "reason code"
+        ret, reason = self.in_packet.read_byte()
         if ret != NC.ERR_SUCCESS:
             return ret
 
