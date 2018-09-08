@@ -225,7 +225,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             return NC.ERR_NO_CONN
 
         self.logger.info("UNSUBSCRIBE: %s", topic)
-        return self.send_unsubscribe(False, [utf8encode(topic)])
+        return self.send_unsubscribe([utf8encode(topic)])
 
     def unsubscribe_multi(self, topics):
         """Unsubscribe to some topics."""
@@ -233,7 +233,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             return NC.ERR_NO_CONN
 
         self.logger.info("UNSUBSCRIBE: %s", ', '.join(topics))
-        return self.send_unsubscribe(False, [utf8encode(topic) for topic in topics])
+        return self.send_unsubscribe([utf8encode(topic) for topic in topics])
 
     def send_disconnect(self, reason=0, props=[]):
         """Send disconnect command."""
@@ -301,12 +301,12 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
 
         return self.packet_queue(pkt)
 
-    def send_unsubscribe(self, dup, topics):
+    def send_unsubscribe(self, topics):
         """Send unsubscribe COMMAND to server."""
         pkt = MqttPkt()
 
         pktlen = 2 + sum([2+len(topic) for topic in topics])
-        pkt.command = NC.CMD_UNSUBSCRIBE | (dup << 3) | (1 << 1)
+        pkt.command = NC.CMD_UNSUBSCRIBE | (1 << 1)
         pkt.remaining_length = pktlen
 
         ret = pkt.alloc()
