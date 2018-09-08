@@ -12,30 +12,38 @@ from nyamuk.nyamuk_prop import *
 
 def nloop(client):
     client.packet_write()     # flush write buffer (messages sent to MQTT server)
-    client.loop()             # fill read buffer   (enqueue received messages)
-    return client.pop_event() # return 1st received message (dequeued)
+    ret = client.loop()       # fill read buffer   (enqueue received messages)
+    if ret != NC.ERR_SUCCESS:
+        return ret, None
+
+    return NC.ERR_SUCCESS, client.pop_event() # return 1st received message (dequeued)
 
 client = Nyamuk("test_nyamuk", server="localhost")
 ret = client.connect(version=5, properties=[
         UserProperty((u"chou",u"pette"))
     ])
 
-ret = nloop(client) # ret should be EventConnack object
-if not isinstance(ret, EventConnack) or ret.ret_code != 0:
-    print('connection failed'); sys.exit(1)
+ret, evt = nloop(client) # ret should be EventConnack object
+if ret != NC.ERR_SUCCESS or not isinstance(evt, EventConnack) or evt.ret_code != 0:
+    print('connection failed:', ret, evt); sys.exit(1)
 
+# QoS 1
 client.subscribe('foo/bar', qos=1, props=[
         SubscriptionIdentifier(42)
     ])
-ret = nloop(client)
-if not isinstance(ret, EventSuback):
-    print('SUBACK not received'); sys.exit(2)
-print('granted qos is', ret.granted_qos[0])
+ret, evt = nloop(client)
+if ret != NC.ERR_SUCCESS or not isinstance(evt, EventSuback):
+    print('SUBACK not received:', ret, evt); sys.exit(2)
+print('granted qos is {0} for "foo/bar" topic'.format(evt.granted_qos[0]))
+
 
 # reception loop
 try:
     while True:
-        evt = nloop(client)
+        ret, evt = nloop(client)
+        if ret != NC.ERR_SUCCESS:
+            print('smth goes wrong, exiting', ret); sys.exit(1)
+
         if isinstance(evt, EventPublish):
             print('we received a message: {0} (topic= {1})'.format(evt.msg.payload, evt.msg.topic))
             if len(evt.props) > 0:
