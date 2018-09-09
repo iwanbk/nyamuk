@@ -209,7 +209,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             return NC.ERR_NO_CONN
 
         self.logger.info("SUBSCRIBE: %s", topic)
-        return self.send_subscribe(False, [(utf8encode(topic), qos)], props)
+        return self.send_subscribe([(utf8encode(topic), qos)], props)
 
     # subscribe to multiple topic filters at once
     def subscribe_multi(self, topics):
@@ -218,7 +218,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             return NC.ERR_NO_CONN
 
         self.logger.info("SUBSCRIBE: %s", ', '.join([t for (t,q) in topics]))
-        return self.send_subscribe(False, [(utf8encode(topic), qos) for (topic, qos) in topics])
+        return self.send_subscribe([(utf8encode(topic), qos) for (topic, qos) in topics])
 
     def unsubscribe(self, topic, props=[]):
         """Unsubscribe to some topic."""
@@ -261,7 +261,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         return self.packet_queue(pkt)
 
     # topics: [(topic, qos)]
-    def send_subscribe(self, dup, topics, props=[]):
+    def send_subscribe(self, topics, props=[]):
         """Send subscribe COMMAND to server.
 
             topics is list of couples (topic filter, subscriber options)
@@ -278,16 +278,14 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             props_len += reduce(lambda x, y: x + y.len(), props, 0)
             pktlen    += t.len_varint(props_len) + props_len
 
-        #TODO: dup bitflag is only for mqtt 3.1
-        #       MUST BE 0 for mqtt 3.1.1 & 5.0
-        pkt.command = NC.CMD_SUBSCRIBE | (dup << 3) | (1 << 1)
+        pkt.command = NC.CMD_SUBSCRIBE | 0x02
         pkt.remaining_length = pktlen
 
         ret = pkt.alloc()
         if ret != NC.ERR_SUCCESS:
             return ret
 
-        #variable header
+        # variable header
         mid = self.mid_generate()
         pkt.write_uint16(mid)
 
@@ -295,7 +293,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         if self.version >= 5:
             pkt.write_props(props, props_len)
 
-        #payload
+        # payload
         for (topic, qos) in topics:
             pkt.write_utf8(topic)
             pkt.write_byte(qos)
