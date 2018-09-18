@@ -1,0 +1,22 @@
+language: python
+
+python:
+    - "2.7"
+
+cache: pip
+
+install:
+    - pip install -r requirements.txt
+    - git clone https://github.com/gbour/paho.mqtt.testing.git paho
+
+before_script:
+    - python3 paho/interoperability/startbroker.py > /tmp/paho.log 2>&1 &
+    - PID=$!
+
+script:
+    - PYTHONPATH=. python -m unittest discover > /tmp/tests.log 2>&1 
+
+after_script:
+    - kill -HUP
+    - cat /tmp/tests.log
+    - cat /tmp/paho.log
