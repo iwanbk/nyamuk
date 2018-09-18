@@ -12,7 +12,7 @@ REASON_NO_MATCH_SUBSCRIBERS   = 0x10
 REASON_NO_SUBSCRIPTION        = 0x11
 REASON_CONTINUE_AUTH          = 0x18
 REASON_REAUTH                 = 0x19
-REASON_UNK_ERR                = 0x80
+REASON_UNSPECIFIED_ERR        = 0x80
 REASON_BAD_PKT                = 0x81
 REASON_PROTOCOL_ERR           = 0x82
 REASON_IMPL_ERR               = 0x83
@@ -61,7 +61,7 @@ REASON_DATA = {
     REASON_NO_SUBSCRIPTION        : ["No subscription existed"],
     REASON_CONTINUE_AUTH          : ["Continue authentication"],
     REASON_REAUTH                 : ["Re-authenticate"],
-    REASON_UNK_ERR                : ["Unspecified error"],
+    REASON_UNSPECIFIED_ERR        : ["Unspecified error"],
     REASON_BAD_PKT                : ["Malformed Packet"],
     REASON_PROTOCOL_ERR           : ["Protocol error"],
     REASON_IMPL_ERR               : ["Implementation specific error"],

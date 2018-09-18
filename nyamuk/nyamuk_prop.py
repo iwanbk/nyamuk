@@ -83,7 +83,7 @@ class NyamukProp(object):
         getattr(packet, t.DATATYPE_OPS[self.type][t.DATATYPE_WR])(self.value)
 
     def __repr__(self):
-        return "{0} ({1})".format(PROPS_DATA[self.id][PROP_DATA_DESC], self.value)
+        return "{0}: {1}".format(PROPS_DATA[self.id][PROP_DATA_DESC], self.value)
 
 
 class PayloadFormatIndicator(NyamukProp):
@@ -216,7 +216,7 @@ PROPS_DATA = {
     0x18: [t.DATATYPE_UINT32   , "WILL DELAY INTERVAL"           , WillDelayInterval],
     0x19: [t.DATATYPE_BYTE     , "REQUEST RESPONSE INFO"         , RequestResponseInformation],
     0x1A: [t.DATATYPE_UTF8     , "RESPONSE INFO"                 , ResponseInformation],
-    0x1C: [t.DATATYPE_UTF8     , "SERVER REFERE"                 , ServerReference],
+    0x1C: [t.DATATYPE_UTF8     , "SERVER REFERENCE"              , ServerReference],
     0x1F: [t.DATATYPE_UTF8     , "REASON STRING"                 , ReasonString],
     0x21: [t.DATATYPE_UINT16   , "RECEIVE MAXIMUM"               , ReceiveMaximum],
     0x22: [t.DATATYPE_UINT16   , "TOPIC ALIAS MAXIMUM"           , TopicAliasMaximum],
