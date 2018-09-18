@@ -200,7 +200,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         self.socket_close()
         return ret
 
-    def subscribe(self, topic, qos, props=[]):
+    def subscribe(self, topic, qos, opts={}, props=[]):
         """Subscribe to some topic.
 
             TODO: mqtt 5.0 - handle other topic options, and properties
@@ -208,17 +208,20 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         if self.sock == NC.INVALID_SOCKET:
             return NC.ERR_NO_CONN
 
-        self.logger.info("SUBSCRIBE: %s", topic)
-        return self.send_subscribe([(utf8encode(topic), qos)], props)
+        self.logger.info("SUBSCRIBE: {0} (qos {1})".format(topic, qos))
+
+        return self.send_subscribe([(utf8encode(topic), qos, opts)], props)
 
     # subscribe to multiple topic filters at once
-    def subscribe_multi(self, topics):
+    def subscribe_multi(self, topics, props=[]):
         """Subscribe to some topics."""
         if self.sock == NC.INVALID_SOCKET:
             return NC.ERR_NO_CONN
 
-        self.logger.info("SUBSCRIBE: %s", ', '.join([t for (t,q) in topics]))
-        return self.send_subscribe([(utf8encode(topic), qos) for (topic, qos) in topics])
+        self.logger.info("SUBSCRIBE: %s".format(topics))
+        return self.send_subscribe(
+            [(utf8encode(topic), qos, opts) for (topic, qos, opts) in topics],
+            props=props)
 
     def unsubscribe(self, topic, props=[]):
         """Unsubscribe to some topic."""
@@ -264,14 +267,17 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
     def send_subscribe(self, topics, props=[]):
         """Send subscribe COMMAND to server.
 
-            topics is list of couples (topic filter, subscriber options)
+            topics is a list either
+            - tuples: (topic filter, qos, nolocal, retain_as_published, retain_handling)
+            - dicts: {'topic': xx, 'qos'; 1, 'nolocal': True, 'retain_as_published': True', 'retain_handling': NC.RETAIN_ALWAYS_SEND
+            }
             - topic filter contains regular characters & wildcards (see section 4.7)
             - subscriber options is composed of qos value and (for mqtt 5.0) no local/retain opts
 
         """
         pkt = MqttPkt()
 
-        pktlen = 2 + sum([2+len(topic)+1 for (topic, opts) in topics])
+        pktlen = 2 + sum([2+len(topic)+1 for (topic, qos, opts) in topics])
 
         props_len = 0
         if self.version >= 5:
@@ -294,9 +300,21 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             pkt.write_props(props, props_len)
 
         # payload
-        for (topic, qos) in topics:
+        for (topic, qos, opts) in topics:
             pkt.write_utf8(topic)
-            pkt.write_byte(qos)
+
+            bitfield = qos
+            if self.version >= 5:
+                if opts.get('no-local', False):
+                    bitfield |= 0x04
+                if opts.get('retain-as-published', False):
+                    bitfield |= 0x08
+
+
+                print(opts.get('retain-handling', 0x00), (0x30 & opts.get('retain-handling', 0x00) << 4))
+                bitfield |= (0x30 & (opts.get('retain-handling', 0x00) << 4))
+
+            pkt.write_byte(bitfield)
 
         return self.packet_queue(pkt)
 
