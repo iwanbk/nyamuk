@@ -437,25 +437,22 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             ret, props = self.in_packet.read_props()
 
         # payload
-        qos_count = self.in_packet.remaining_length - self.in_packet.pos
-        granted_qos = bytearray(qos_count)
+        # NOTE: in mqtt 5.0, the payload is generalized to contains either
+        payload_size = self.in_packet.remaining_length - self.in_packet.pos
+        reasons      = bytearray(payload_size)
 
-        if granted_qos is None:
+        if reasons is None:
             return NC.ERR_NO_MEM
 
-        i = 0
-        while self.in_packet.pos < self.in_packet.remaining_length:
+        for i in range(payload_size):
             ret, byte = self.in_packet.read_byte()
 
             if ret != NC.ERR_SUCCESS:
-                granted_qos = None
                 return ret
 
-            granted_qos[i] = byte
+            reasons[i] = byte
 
-            i += 1
-
-        evt = event.EventSuback(mid, list(granted_qos), props=props)
+        evt = event.EventSuback(mid, list(reasons), props=props)
         self.push_event(evt)
 
         granted_qos = None
