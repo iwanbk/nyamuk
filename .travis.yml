@@ -8,15 +8,17 @@ cache: pip
 install:
     - pip install -r requirements.txt
     - git clone https://github.com/gbour/paho.mqtt.testing.git paho
+    - cd paho && git checkout mqtt5.0 && cd ..
 
 before_script:
     - python3 paho/interoperability/startbroker.py > /tmp/paho.log 2>&1 &
     - PID=$!
+    - sleep 3
 
 script:
     - PYTHONPATH=. python -m unittest discover > /tmp/tests.log 2>&1 
 
 after_script:
-    - kill -HUP
+    - kill -HUP $PID
     - cat /tmp/tests.log
     - cat /tmp/paho.log
