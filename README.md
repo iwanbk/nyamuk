@@ -1,3 +1,4 @@
+[![Build Status](https://travis-ci.org/iwanbk/nyamuk.svg?branch=mqtt5.0)](https://travis-ci.org/iwanbk/nyamuk)
 
 Nyamuk
 ======
