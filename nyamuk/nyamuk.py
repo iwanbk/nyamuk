@@ -586,10 +586,19 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
 
         ret, mid = self.in_packet.read_uint16()
 
+        reason = r.REASON_SUCCESS
+        props  = []
+        #NOTE: reason & properties are optional (3.5.2.1)
+        if self.version >= 5 and self.in_packet.remaining_length > 2:
+            ret, reason = self.in_packet.read_byte()
+
+            if self.in_packet.remaining_length >= 4:
+                ret, props = self.in_packet.read_props()
+
         if ret != NC.ERR_SUCCESS:
             return ret
 
-        evt = event.EventPubrec(mid)
+        evt = event.EventPubrec(mid, reason=reason, props=props)
         self.push_event(evt)
 
         return NC.ERR_SUCCESS
@@ -600,10 +609,19 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
 
         ret, mid = self.in_packet.read_uint16()
 
+        reason = r.REASON_SUCCESS
+        props  = []
+        #NOTE: reason & properties are optional (3.6.2.1)
+        if self.version >= 5 and self.in_packet.remaining_length > 2:
+            ret, reason = self.in_packet.read_byte()
+
+            if self.in_packet.remaining_length >= 4:
+                ret, props = self.in_packet.read_props()
+
         if ret != NC.ERR_SUCCESS:
             return ret
 
-        evt = event.EventPubrel(mid)
+        evt = event.EventPubrel(mid, reason=reason, props=props)
         self.push_event(evt)
 
         return NC.ERR_SUCCESS
@@ -614,10 +632,19 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
 
         ret, mid = self.in_packet.read_uint16()
 
+        reason = r.REASON_SUCCESS
+        props  = []
+        #NOTE: reason & properties are optional (3.7.2.1)
+        if self.version >= 5 and self.in_packet.remaining_length > 2:
+            ret, reason = self.in_packet.read_byte()
+
+            if self.in_packet.remaining_length >= 4:
+                ret, props = self.in_packet.read_props()
+
         if ret != NC.ERR_SUCCESS:
             return ret
 
-        evt = event.EventPubcomp(mid)
+        evt = event.EventPubcomp(mid, reason=reason, props=props)
         self.push_event(evt)
 
         return NC.ERR_SUCCESS
@@ -652,7 +679,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         pkt = MqttPkt()
 
         pkt.command = NC.CMD_PUBACK
-        pkt.remaining_length = 2
+        pkt.remaining_length = 2 # pktid
         # mqtt 5.0
         props_len = 0
         if self.version >= 5:
@@ -678,7 +705,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
 
         return self.packet_queue(pkt)
 
-    def pubrel(self, mid):
+    def pubrel(self, mid, reason=r.REASON_SUCCESS, props=[]):
         """Send PUBREL response to server."""
         if self.sock == NC.INVALID_SOCKET:
             return NC.ERR_NO_CONN
@@ -686,20 +713,36 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         self.logger.info("Send PUBREL (msgid=%s)", mid)
         pkt = MqttPkt()
 
-        # PUBREL QOS = 1
-        pkt.command = NC.CMD_PUBREL | (1 << 1)
-        pkt.remaining_length = 2
+        # PUBREL QOS = 2
+        pkt.command = NC.CMD_PUBREL | 0x02
+        pkt.remaining_length = 2 # pktid
+
+        # mqtt 5.0
+        props_len = 0
+        if self.version >= 5:
+            props_len += reduce(lambda x, y: x + y.len(), props, 0)
+
+            # reason code + properties length + properties
+            pkt.remaining_length += 1
+            # NOTE: according to specs (3.6.2.1) properties length field is optional
+            #       if there's no properties
+            #       but to remain compliant with bad server implementation, we add it anyway
+            pkt.remaining_length += t.len_varint(props_len) + props_len
+            print(props_len, t.len_varint(props_len))
 
         ret = pkt.alloc()
         if ret != NC.ERR_SUCCESS:
             return ret
 
-        #variable header: acknowledged message id
+        # variable header: acknowledged message id, reason code & properties
         pkt.write_uint16(mid)
+        if self.version >= 5:
+            pkt.write_byte(reason)
+            pkt.write_props(props, props_len)
 
         return self.packet_queue(pkt)
 
-    def pubrec(self, mid):
+    def pubrec(self, mid, reason=r.REASON_SUCCESS, props=[]):
         """Send PUBREC response to server."""
         if self.sock == NC.INVALID_SOCKET:
             return NC.ERR_NO_CONN
@@ -710,16 +753,32 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         pkt.command = NC.CMD_PUBREC
         pkt.remaining_length = 2
 
+        # mqtt 5.0
+        props_len = 0
+        if self.version >= 5:
+            props_len += reduce(lambda x, y: x + y.len(), props, 0)
+
+            # reason code + properties length + properties
+            pkt.remaining_length += 1
+            # NOTE: according to specs (3.6.2.1) properties length field is optional
+            #       if there's no properties
+            #       but to remain compliant with bad server implementation, we add it anyway
+            pkt.remaining_length += t.len_varint(props_len) + props_len
+            print(props_len, t.len_varint(props_len))
+
         ret = pkt.alloc()
         if ret != NC.ERR_SUCCESS:
             return ret
 
-        #variable header: acknowledged message id
+        # variable header: acknowledged message id, reason code & properties
         pkt.write_uint16(mid)
+        if self.version >= 5:
+            pkt.write_byte(reason)
+            pkt.write_props(props, props_len)
 
         return self.packet_queue(pkt)
 
-    def pubcomp(self, mid):
+    def pubcomp(self, mid, reason=r.REASON_SUCCESS, props=[]):
         """Send PUBCOMP response to server."""
         if self.sock == NC.INVALID_SOCKET:
             return NC.ERR_NO_CONN
@@ -730,12 +789,28 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         pkt.command = NC.CMD_PUBCOMP
         pkt.remaining_length = 2
 
+        # mqtt 5.0
+        props_len = 0
+        if self.version >= 5:
+            props_len += reduce(lambda x, y: x + y.len(), props, 0)
+
+            # reason code + properties length + properties
+            pkt.remaining_length += 1
+            # NOTE: according to specs (3.6.2.1) properties length field is optional
+            #       if there's no properties
+            #       but to remain compliant with bad server implementation, we add it anyway
+            pkt.remaining_length += t.len_varint(props_len) + props_len
+            print(props_len, t.len_varint(props_len))
+
         ret = pkt.alloc()
         if ret != NC.ERR_SUCCESS:
             return ret
 
-        #variable header: acknowledged message id
+        # variable header: acknowledged message id
         pkt.write_uint16(mid)
+        if self.version >= 5:
+            pkt.write_byte(reason)
+            pkt.write_props(props, props_len)
 
         return self.packet_queue(pkt)
 

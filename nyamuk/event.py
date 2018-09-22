@@ -63,21 +63,27 @@ class EventPuback(BaseEvent):
 
 class EventPubrec(BaseEvent):
     """PUBREC received."""
-    def __init__(self, mid):
-        BaseEvent.__init__(self, NC.CMD_PUBREC)
+    def __init__(self, mid, reason=None, props=[]):
+        BaseEvent.__init__(self, NC.CMD_PUBREC, props=props)
         self.mid = mid
+        # v5 only
+        self.reason = reason
 
 class EventPubrel(BaseEvent):
     """PUBREL received."""
-    def __init__(self, mid):
-        BaseEvent.__init__(self, NC.CMD_PUBREL)
+    def __init__(self, mid, reason=None, props=[]):
+        BaseEvent.__init__(self, NC.CMD_PUBREL, props=props)
         self.mid = mid
+        # v5 only
+        self.reason = reason
 
 class EventPubcomp(BaseEvent):
     """PUBCOMP received."""
-    def __init__(self, mid):
-        BaseEvent.__init__(self, NC.CMD_PUBCOMP)
+    def __init__(self, mid, reason=None, props=[]):
+        BaseEvent.__init__(self, NC.CMD_PUBCOMP, props=props)
         self.mid = mid
+        # v5 only
+        self.reason = reason
 
 class EventNeterr(BaseEvent):
     """Network error event."""
