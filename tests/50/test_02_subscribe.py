@@ -51,7 +51,7 @@ class SubscribeTest(unittest.TestCase):
         self.assertEqual(len(ret.reasons), 1)
         self.assertEqual(ret.reasons[0], r.REASON_GRANTED_QOS0)
 
-    def test_02_subscribe_qos2(self):
+    def test_02_subscribe_qos1(self):
         ret = self._c.subscribe("simple/topic", qos=1)
         ret = self._packet_fire(self._c)
         print(ret)
@@ -61,7 +61,17 @@ class SubscribeTest(unittest.TestCase):
         self.assertEqual(len(ret.reasons), 1)
         self.assertEqual(ret.reasons[0], r.REASON_GRANTED_QOS1)
 
-    def test_03_subscribe_wildcards(self):
+    def test_03_subscribe_qos2(self):
+        ret = self._c.subscribe("simple/topic", qos=2)
+        ret = self._packet_fire(self._c)
+        print(ret)
+
+        # we expect no response for qos 0 (fire & forget)
+        self.assertTrue(isinstance(ret, EventSuback))
+        self.assertEqual(len(ret.reasons), 1)
+        self.assertEqual(ret.reasons[0], r.REASON_GRANTED_QOS2)
+
+    def test_10_subscribe_wildcards(self):
         ret = self._c.subscribe("topic/+/with/wildcards/#", qos=1)
         ret = self._packet_fire(self._c)
         print(ret)
@@ -71,7 +81,7 @@ class SubscribeTest(unittest.TestCase):
         self.assertEqual(len(ret.reasons), 1)
         self.assertEqual(ret.reasons[0], r.REASON_GRANTED_QOS1)
 
-    def test_05_subscribe_multi(self):
+    def test_11_subscribe_multi(self):
         ret = self._c.subscribe_multi([
                 ("multi/topic/0", 0, {}),
                 ("multi/topic/1", 1, {}),
@@ -84,7 +94,7 @@ class SubscribeTest(unittest.TestCase):
         self.assertTrue(isinstance(ret, EventSuback))
         self.assertEqual(ret.reasons, [0, 1, 1, 0])
 
-    def test_06_subscribe_options(self):
+    def test_12_subscribe_options(self):
         ret = self._c.subscribe_multi([
                 ("subscribe/options/0", 0, {'no-local': True}),
                 ("subscribe/options/1", 1, {'retain-as-published': True}),
