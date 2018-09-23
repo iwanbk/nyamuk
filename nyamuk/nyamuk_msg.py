@@ -15,6 +15,10 @@ class NyamukMsg:
         self.qos = qos
         self.retain = retain
 
+    def __str__(self):
+        return "Msg(mid={mid}, topic={topic}, msg={msg}, qos={qos})".\
+            format(mid=self.mid, topic=self.topic, msg=self.payload, qos=self.qos)
+
 class NyamukMsgAll:
 
     def __init__(self):

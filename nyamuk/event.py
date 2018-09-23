@@ -2,6 +2,7 @@
 import socket
 
 import nyamuk_const as NC
+import mqtt_reasons as r
 
 #mqtt event
 EV_CONNACK = NC.CMD_CONNACK
@@ -34,6 +35,9 @@ class EventPublish(BaseEvent):
         BaseEvent.__init__(self, NC.CMD_PUBLISH, props=props)
         self.msg = msg
 
+    def __str__(self):
+        return "PUBLISH(msg={0}, props={1})".format(self.msg, self.props)
+
 class EventSuback(BaseEvent):
     """SUBACK received."""
     def __init__(self, mid, reasons=[], props=[]):
@@ -44,8 +48,7 @@ class EventSuback(BaseEvent):
         self.granted_qos = reasons
 
     def __str__(self):
-        return "SUBACK(mid={0}, reasons={1}, props={2})".\
-            format(self.mid, self.reasons, self.props)
+        return "SUBACK(mid={0}, reasons={1}, props={2})".format(self.mid, self.reasons, self.props)
 
 class EventUnsuback(BaseEvent):
     """UNSUBACK received."""
@@ -55,6 +58,9 @@ class EventUnsuback(BaseEvent):
         # v5 only
         self.reasons = reasons
 
+    def __str__(self):
+        return "UNSUBACK(mid={0}, reasons={1}, props={2})".format(self.mid, self.reasons, self.props)
+
 class EventPuback(BaseEvent):
     """PUBACK received."""
     def __init__(self, mid, reason=None, props=[]):
@@ -62,6 +68,10 @@ class EventPuback(BaseEvent):
         self.mid    = mid
         # v5 only
         self.reason = reason
+
+    def __str__(self):
+        return "PUBACK(mid={0}, reasons=0x{1:02x} ({2}), props={3})".\
+            format(self.mid, self.reason, r.get_reason_name(self.reason), self.props)
 
 class EventPubrec(BaseEvent):
     """PUBREC received."""
@@ -71,6 +81,10 @@ class EventPubrec(BaseEvent):
         # v5 only
         self.reason = reason
 
+    def __str__(self):
+        return "PUBREC(mid={0}, reasons=0x{1:02x} ({2}), props={3})".\
+            format(self.mid, self.reason, r.get_reason_name(self.reason), self.props)
+
 class EventPubrel(BaseEvent):
     """PUBREL received."""
     def __init__(self, mid, reason=None, props=[]):
@@ -79,6 +93,10 @@ class EventPubrel(BaseEvent):
         # v5 only
         self.reason = reason
 
+    def __str__(self):
+        return "PUBREL(mid={0}, reasons=0x{1:02x} ({2}), props={3})".\
+            format(self.mid, self.reason, r.get_reason_name(self.reason), self.props)
+
 class EventPubcomp(BaseEvent):
     """PUBCOMP received."""
     def __init__(self, mid, reason=None, props=[]):
@@ -86,6 +104,10 @@ class EventPubcomp(BaseEvent):
         self.mid = mid
         # v5 only
         self.reason = reason
+
+    def __str__(self):
+        return "PUBCOMP(mid={0}, reasons=0x{1:02x} ({2}), props={3})".\
+            format(self.mid, self.reason, r.get_reason_name(self.reason), self.props)
 
 class EventNeterr(BaseEvent):
     """Network error event."""
@@ -105,3 +127,8 @@ class EventDisconnect(BaseEvent):
         BaseEvent.__init__(self, NC.CMD_DISCONNECT, props=props)
 
         self.reason = reason
+
+    def __str__(self):
+        return "DISCONNECT(reasons=0x{0:02x} ({1}), props={2})".\
+            format(self.reason, r.get_reason_name(self.reason), self.props)
+
