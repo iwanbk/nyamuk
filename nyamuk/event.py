@@ -36,7 +36,7 @@ class EventPublish(BaseEvent):
 
 class EventSuback(BaseEvent):
     """SUBACK received."""
-    def __init__(self, mid, reasons, props=[]):
+    def __init__(self, mid, reasons=[], props=[]):
         BaseEvent.__init__(self, NC.CMD_SUBACK, props=props)
         self.mid     = mid
         self.reasons = reasons
@@ -49,9 +49,11 @@ class EventSuback(BaseEvent):
 
 class EventUnsuback(BaseEvent):
     """UNSUBACK received."""
-    def __init__(self, mid, props=[]):
+    def __init__(self, mid, reasons=[], props=[]):
         BaseEvent.__init__(self, NC.CMD_UNSUBACK, props=props)
         self.mid = mid
+        # v5 only
+        self.reasons = reasons
 
 class EventPuback(BaseEvent):
     """PUBACK received."""

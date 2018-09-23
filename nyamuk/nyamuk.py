@@ -229,7 +229,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             return NC.ERR_NO_CONN
 
         self.logger.info("UNSUBSCRIBE: %s", topic)
-        return self.send_unsubscribe(props, [utf8encode(topic)])
+        return self.send_unsubscribe([utf8encode(topic)], props)
 
     def unsubscribe_multi(self, topics, props=[]):
         """Unsubscribe to some topics."""
@@ -237,7 +237,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             return NC.ERR_NO_CONN
 
         self.logger.info("UNSUBSCRIBE: %s", ', '.join(topics))
-        return self.send_unsubscribe(props, [utf8encode(topic) for topic in topics])
+        return self.send_unsubscribe([utf8encode(topic) for topic in topics], props)
 
     def send_disconnect(self, reason=r.REASON_NORMAL_DISCONN, props=[]):
         """Send disconnect command."""
@@ -318,7 +318,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
 
         return self.packet_queue(pkt)
 
-    def send_unsubscribe(self, props, topics):
+    def send_unsubscribe(self, topics, props):
         """Send unsubscribe COMMAND to server."""
         pkt = MqttPkt()
 
@@ -468,12 +468,25 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         if ret != NC.ERR_SUCCESS:
             return ret
 
-        # mqtt 5.0: properties
-        props = []
+        # mqtt 5.0: properties and reasons
+        reasons = []
+        props   = []
         if self.version >= 5:
             ret, props = self.in_packet.read_props()
 
-        evt = event.EventUnsuback(mid, props)
+            # payload
+            # NOTE: in mqtt 5.0, payload contains unsuback reasons
+            payload_size = self.in_packet.remaining_length - self.in_packet.pos
+            reasons      = bytearray(payload_size)
+            if reasons is None:
+                return NC.ERR_NO_MEM
+
+            for i in range(payload_size):
+                ret, reasons[i] = self.in_packet.read_byte()
+                if ret != NC.ERR_SUCCESS:
+                    return ret
+
+        evt = event.EventUnsuback(mid, reasons=list(reasons), props=props)
         self.push_event(evt)
 
         return NC.ERR_SUCCESS
