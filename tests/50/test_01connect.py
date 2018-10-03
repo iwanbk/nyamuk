@@ -4,6 +4,7 @@
 import unittest
 from nyamuk import *
 from nyamuk import mqtt_reasons as r
+from nyamuk import nyamuk_prop as p
 
 class ConnectTest(unittest.TestCase):
     def _packet_fire(self, c):
@@ -49,6 +50,28 @@ class ConnectTest(unittest.TestCase):
 
         self.assertEqual(ret, None)
         self.assertFalse(c.conn_is_alive())
+
+    def test_04_serverside_clientid(self):
+        """
+            Server may allow client to supply a 0-length client-id
+            If so, it must assign a unique client-id
+        """
+        c = Nyamuk(None, server='localhost')
+        self.assertEqual(c.client_id, None)
+
+        ret = c.connect(version=5)
+        ret = self._packet_fire(c)
+        print(ret)
+
+        self.assertTrue(isinstance(ret, EventConnack))
+        # assigned client-id is returned as property
+        cid = filter(lambda x: isinstance(x, p.AssignedClientId), ret.props)
+        self.assertTrue(len(cid), 1)
+
+        # returned client-id is automatically assigned to the client object
+        self.assertNotEqual(c.client_id, None)
+        print(c.client_id)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -402,6 +402,12 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             if len(ka) > 0:
                 self.keep_alive = ka[0].value
 
+
+            # if CONNACK contains AssignedClientId property, we use it as client-id
+            cid = filter(lambda x: isinstance(x, AssignedClientId), props)
+            if len(cid) > 0:
+                self.client_id = cid[0].value
+
         evt = event.EventConnack(reason, session_present, props=props)
         self.push_event(evt)
 

@@ -116,12 +116,12 @@ class MqttPkt:
         if version >= 5:
             props_len = reduce(lambda x,y: x + y.len(), props, 0)
 
-        client_id = utf8encode(nyamuk.client_id)
+        client_id = '' if nyamuk.client_id is None else utf8encode(nyamuk.client_id)
         username  = utf8encode(nyamuk.username) if nyamuk.username is not None else None
         password  = utf8encode(nyamuk.password) if nyamuk.password is not None else None
 
         # payload len
-        payload_len = 2 + len(client_id)
+        payload_len = t.len_utf8(client_id)
         if nyamuk.will is not None:
             will = 1
             will_topic = utf8encode(nyamuk.will.topic)
