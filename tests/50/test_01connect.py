@@ -72,6 +72,16 @@ class ConnectTest(unittest.TestCase):
         self.assertNotEqual(c.client_id, None)
         print(c.client_id)
 
+    def test_05_utf8_clientid(self):
+        # clientid length is 20 bytes
+        c = Nyamuk(u"ütf8 clîentid 😄", server="localhost")
+        ret = c.connect(version=5)
+        ret = self._packet_fire(c)
+
+        self.assertTrue(isinstance(ret, EventConnack))
+        self.assertEqual(ret.ret_code, r.REASON_SUCCESS)
+        self.assertTrue(c.conn_is_alive())
+
 
 if __name__ == '__main__':
     unittest.main()
