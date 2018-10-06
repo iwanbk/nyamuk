@@ -354,13 +354,14 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
     def publish(self, topic, payload = None, qos = 0, retain = False, props=[]):
         """Publish some payload to server."""
         #print "PUBLISHING (",topic,"): ", payload
-        payloadlen = len(payload)
         if topic is None or qos < 0 or qos > 2:
             print "PUBLISH:err inval"
             return NC.ERR_INVAL
 
-        #payloadlen <= 250MB
-        if payloadlen > (250 * 1024 * 1204):
+        topic = utf8encode(topic)
+
+        # max payload len is 250 MB
+        if len(payload) > (250 * 1024 * 1204):
             self.logger.error("PUBLISH:err payload len:%d", payloadlen)
             return NC.ERR_PAYLOAD_SIZE
 
@@ -564,9 +565,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         if self.sock == NC.INVALID_SOCKET:
             return NC.ERR_NO_CONN
 
-        #NOTE: payload may be any kind of data
-        #      yet if it is a unicode string we utf8-encode it as convenience
-        return self._do_send_publish(mid, utf8encode(topic), utf8encode(payload), qos, retain, dup,
+        return self._do_send_publish(mid, topic, payload, qos, retain, dup,
             props)
 
     def _do_send_publish(self, mid, topic, payload, qos, retain, dup, props=[]):

@@ -272,7 +272,7 @@ class BaseNyamuk:
         if ret != NC.ERR_SUCCESS:
             return ret, None
 
-        #variable header : Topic String
+        # variable header : Topic String
         pkt.write_utf8(topic)
 
         if qos > 0:
@@ -283,9 +283,9 @@ class BaseNyamuk:
             print("props len=", props_len)
             pkt.write_props(props, props_len)
 
-        #payloadlen
+        # payloadlen
         if payloadlen > 0:
-            pkt.write_bytes(payload, payloadlen)
+            pkt.write_raw(payload, payloadlen)
 
         return NC.ERR_SUCCESS, pkt
 

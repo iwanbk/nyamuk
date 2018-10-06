@@ -232,6 +232,18 @@ class MqttPkt:
         self.payload[self.pos:self.pos+length] = data[:length]
         self.pos += len(data)
 
+    def write_raw(self, data, length=-1):
+        """`write_raw` is almost equivalent to `write_bytes`
+            except we don't write data length in the destination buffer
+
+            (the data written is not of MQTT types)
+        """
+        if length < 0:
+            length = len(data)
+
+        self.payload[self.pos:self.pos+length] = data[:length]
+        self.pos += len(data)
+
     def write_utf8(self, string):
         """Write a string to this packet.
 
