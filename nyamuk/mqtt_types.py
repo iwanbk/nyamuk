@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf8 -*-
 
+from utils import utf8encode
+
 DATATYPE_BYTE      = 0x01
 DATATYPE_UINT16    = 0x02
 DATATYPE_UINT32    = 0x03
@@ -40,10 +42,10 @@ def len_utf8(value):
     """
         utf8 string
     """
-    return 2 + len(value)
+    return 2 + len(utf8encode(value))
 
 def len_utf8_pair((key, value)):
-        return 4 + len(key) + len(value)
+        return 4 + len(utf8encode(key)) + len(utf8encode(value))
 
 DATATYPE_LEN = 0
 DATATYPE_WR  = 1
