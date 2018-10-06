@@ -219,20 +219,27 @@ class MqttPkt:
             if value <= 0:
                 break
 
-    def write_bytes(self, data, n):
-        """Write n number of bytes to this packet."""
-        for pos in xrange(0, n):
-            # TODO: unicode character to bytearray field
-            #       how to convert properly ?
-            self.payload[self.pos + pos] = str(data[pos])
 
-        self.pos += n
+    def write_bytes(self, data, length=-1):
+        """Write a bytearray to this packet.
+
+            NOTE: data must be of bytearray type
+        """
+        if length < 0:
+            length = len(data)
+
+        self.write_uint16(length)
+        self.payload[self.pos:self.pos+length] = data[:length]
+        self.pos += len(data)
 
     def write_utf8(self, string):
-        """Write a string to this packet."""
-        #print('write utf8:', string, self.pos)
-        self.write_uint16(len(string))
-        self.write_bytes(string, len(string))
+        """Write a string to this packet.
+
+            NOTE: string is an encoded utf8 string (type str in py2.7)
+        """
+        string = utf8encode(string)
+        #NOTE: byte length is written by write_bytes()
+        self.write_bytes(bytearray(string))
 
     def write_utf8_pair(self, (key, value)):
         self.write_utf8(key)
