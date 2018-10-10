@@ -535,9 +535,8 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
 
         # payload
         message.msg.payloadlen = self.in_packet.remaining_length - self.in_packet.pos
-
         if message.msg.payloadlen > 0:
-            ret, message.msg.payload = self.in_packet.read_bytes(message.msg.payloadlen)
+            ret, message.msg.payload = self.in_packet.read_raw(message.msg.payloadlen)
             if ret != NC.ERR_SUCCESS:
                 return ret
 

@@ -321,24 +321,33 @@ class MqttPkt:
 
         return NC.ERR_SUCCESS, value
 
-    def read_bytes(self, count):
+    def read_bytes(self):
         """Read count number of bytes."""
-        if self.pos + count > self.remaining_length:
+        rc, length = self.read_uint16()
+        if rc != NC.ERR_SUCCESS:
+            return rc, None
+
+        if self.pos + length > self.remaining_length:
             return NC.ERR_PROTOCOL, None
 
-        ba = bytearray(count)
-        for x in xrange(0, count):
-            ba[x] = self.payload[self.pos]
-            self.pos += 1
+        ba = self.payload[self.pos:self.pos+length]
+        self.pos += length
 
         return NC.ERR_SUCCESS, ba
 
+    def read_raw(self, length):
+        """Read a raw byte stream (not a MQTT bytes type)
+        """
+        if self.pos + length > self.remaining_length:
+            return NC.ERR_PROTOCOL, None
+
+        raw = self.payload[self.pos:self.pos+length]
+        self.pos += length
+
+        return NC.ERR_SUCCESS, raw
+
     def read_utf8(self):
         """Read utf-8 string.
-
-            TODO:
-                - return string as utf8
-                - optimize
         """
         rc, length = self.read_uint16()
 
@@ -348,15 +357,12 @@ class MqttPkt:
         if self.pos + length > self.remaining_length:
             return NC.ERR_PROTOCOL, None
 
-        ba = bytearray(length)
+        ba = self.payload[self.pos:self.pos+length]
+        self.pos += length
         if ba is None:
             return NC.ERR_NO_MEM, None
 
-        for x in xrange(0, length):
-            ba[x] = self.payload[self.pos]
-            self.pos += 1
-
-        return NC.ERR_SUCCESS, ba
+        return NC.ERR_SUCCESS, ba.decode('utf8')
 
     def read_utf8_pair(self):
         ret, key   = self.read_utf8()
