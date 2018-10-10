@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf8 -*-
 
+import time
 import unittest
 from nyamuk import *
 from nyamuk import mqtt_reasons as r
@@ -82,6 +83,81 @@ class ConnectTest(unittest.TestCase):
         self.assertEqual(ret.ret_code, r.REASON_SUCCESS)
         self.assertTrue(c.conn_is_alive())
 
+    def test_06_will_simple(self):
+        c = Nyamuk('test-will', server='localhost')
+        ret = c.connect(version=5, will={
+            'topic'  : 'last/will',
+            'message': 'I\'m dying...',
+            'qos'    : 1
+        })
+        ret = self._packet_fire(c)
+        print(ret)
+
+        subscr = Nyamuk("fake_subscrr", server="localhost")
+        ret = subscr.connect(version=5)
+        ret = self._packet_fire(subscr)
+
+        subscr.subscribe('last/will', qos=0)
+        self._packet_fire(subscr)
+
+        self.assertTrue(isinstance(ret, EventConnack))
+        self.assertEqual(ret.ret_code, r.REASON_SUCCESS)
+        self.assertTrue(c.conn_is_alive())
+
+        c.socket_close()
+
+        ret = self._packet_fire(subscr)
+        print(ret)
+        self.assertTrue(isinstance(ret, EventPublish))
+        self.assertEqual(ret.msg.topic, 'last/will')
+        self.assertEqual(ret.msg.payload, 'I\'m dying...')
+
+        subscr.socket_close()
+
+    def test_07_will_properties(self):
+        c = Nyamuk('test-will', server='localhost')
+        ret = c.connect(version=5, will={
+            'topic'  : 'last/will',
+            'message': 'I\'m dying again...',
+            'qos'    : 1,
+
+            'props'  : [
+                p.UserProperty(('hello','i\'m dead')),
+                p.WillDelayInterval(0),
+                p.PayloadFormatIndicator(1),
+                p.MessageExpiryInterval(10),
+                p.ContentType('text/plain; charset=UTF-8'),
+                p.ResponseTopic('will/response/topic'),
+                #p.CorrelationData(bytearray('foobar')),
+                p.CorrelationData('föobar'),
+            ]
+        })
+        ret = self._packet_fire(c)
+        print(ret)
+
+        subscr = Nyamuk("fake_subscr", server="localhost")
+        ret = subscr.connect(version=5)
+        ret = self._packet_fire(subscr)
+
+        subscr.subscribe('last/will', qos=0)
+        self._packet_fire(subscr)
+
+        self.assertTrue(isinstance(ret, EventConnack))
+        self.assertEqual(ret.ret_code, r.REASON_SUCCESS)
+        self.assertTrue(c.conn_is_alive())
+
+        c.socket_close()
+        time.sleep(1)
+
+        ret = self._packet_fire(subscr)
+        print(ret)
+        self.assertTrue(isinstance(ret, EventPublish))
+        self.assertEqual(ret.msg.topic, 'last/will')
+        self.assertEqual(ret.msg.payload, 'I\'m dying again...')
+        # Will delay interval is not propagated
+        self.assertEqual(len(ret.props), 6)
+
+        subscr.socket_close()
 
 if __name__ == '__main__':
     unittest.main()

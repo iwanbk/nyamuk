@@ -15,7 +15,7 @@ import base_nyamuk
 import nyamuk_const as NC
 from mqtt_pkt import MqttPkt
 import mqtt_types as t
-from nyamuk_msg import NyamukMsgAll, NyamukMsg
+from nyamuk_msg import NyamukMsgAll, NyamukMsg, NyamukWillMsg
 import nyamuk_net
 import event
 from utils import utf8encode
@@ -131,7 +131,7 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
             return NC.ERR_PROTOCOL
 
     #
-    # will = None | {'topic': Topic, 'message': Msg, 'qos': 0|1|2, retain=True|False}
+    # will = None | {'topic': Topic, 'message': Msg, 'qos': 0|1|2, retain=True|False, props=[]}
     # will message, qos and retain are optional (default to empty string, 0 qos and False retain)
     #
     def connect(self, version = 3, clean_session = 1, will = None, properties = []):
@@ -143,13 +143,15 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         self.will          = None
 
         if will is not None:
-            self.will = NyamukMsg(
-                topic = will['topic'],
+            self.will = NyamukWillMsg(
                 # unicode text needs to be utf8 encoded to be sent on the wire
                 # str or bytearray are kept as it is
-                payload = utf8encode(will.get('message','')),
-                qos = will.get('qos', 0),
-                retain = will.get('retain', False)
+                topic   = utf8encode(will['topic']),
+                payload = will.get('message',''),
+                qos     = will.get('qos', 0),
+                retain  = will.get('retain', False),
+
+                props   = will.get('props', [])
             )
 
         #CONNECT packet

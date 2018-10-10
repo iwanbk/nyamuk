@@ -122,11 +122,16 @@ class MqttPkt:
 
         # payload len
         payload_len = t.len_utf8(client_id)
+        props = []; props_len = 0
         if nyamuk.will is not None:
             will = 1
             will_topic = utf8encode(nyamuk.will.topic)
 
-            payload_len = payload_len + 2 + len(will_topic) + 2 + nyamuk.will.payloadlen
+            payload_len += t.len_utf8(will_topic) + 2 + nyamuk.will.payloadlen
+
+            if version >= 5:
+                will_props_len = reduce(lambda x, y: x + y.len(), nyamuk.will.props, 0)
+                payload_len += will_props_len + t.len_varint(will_props_len)
 
         if username is not None:
             payload_len = payload_len + 2 + len(username)
@@ -172,8 +177,7 @@ class MqttPkt:
         if will:
             if version >= 5:
                 # 5.0 version: will content encoded as properties
-                #TODO: after NyamukMsg update (add properties)
-                pass
+                self.write_props(nyamuk.will.props, will_props_len)
 
             self.write_utf8(will_topic)
             self.write_utf8(nyamuk.will.payload)
