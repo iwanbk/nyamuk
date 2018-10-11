@@ -29,6 +29,10 @@ class EventConnack(BaseEvent):
         # >= v3.1.1 only
         self.session_present = session_present
 
+    def __str__(self):
+        return "CONNACK(reason=0x{0:02x}) ({1}), session_present={2}, props={3}".\
+            format(self.reason, r.get_reason_name(self.reason), self.session_present, self.props)
+
 class EventPublish(BaseEvent):
     """PUBLISH received."""
     def __init__(self, msg, props=[]):

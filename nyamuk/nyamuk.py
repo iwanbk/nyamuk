@@ -517,16 +517,13 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
         message.msg.qos = (header & 0x06) >> 1
         message.msg.retain = (header & 0x01)
 
-        ret, ba_data = self.in_packet.read_utf8()
-        message.msg.topic = ba_data.decode('utf8')
-
+        ret, message.msg.topic = self.in_packet.read_utf8()
         if ret != NC.ERR_SUCCESS:
             return ret
 
         #fix_sub_topic TODO
         if message.msg.qos > 0:
-            ret, word = self.in_packet.read_uint16()
-            message.msg.mid = word
+            ret, message.msg.mid = self.in_packet.read_uint16()
             if ret != NC.ERR_SUCCESS:
                 return ret
 
@@ -547,16 +544,11 @@ class Nyamuk(base_nyamuk.BaseNyamuk):
 
         message.timestamp = time.time()
 
-        qos = message.msg.qos
-
-        if qos in (0,1,2):
-            evt = event.EventPublish(message.msg, props=props)
-            self.push_event(evt)
-
-            return NC.ERR_SUCCESS
-
-        else:
+        if message.msg.qos not in (0,1,2):
             return NC.ERR_PROTOCOL
+
+        evt = event.EventPublish(message.msg, props=props)
+        self.push_event(evt)
 
         return NC.ERR_SUCCESS
 

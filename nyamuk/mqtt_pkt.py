@@ -166,10 +166,7 @@ class MqttPkt:
 
         ## mqtt5: properties
         if version >= 5:
-            self.write_varint(props_len)
-
-            for prop in props:
-                prop.write(self)
+            self.write_props(props, props_len)
 
         # payload
         self.write_utf8(client_id)
