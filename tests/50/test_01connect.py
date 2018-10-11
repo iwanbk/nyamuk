@@ -159,5 +159,14 @@ class ConnectTest(unittest.TestCase):
 
         subscr.socket_close()
 
+    def test_08_auth(self):
+        c = Nyamuk('test-auth', server='localhost')
+        ret = c.connect(version=5, properties=[
+                p.AuthenticationMethod('OTP'),
+                p.AuthenticationData(bytearray('123456', 'ascii')),
+            ])
+        ret = self._packet_fire(c)
+        print(ret)
+
 if __name__ == '__main__':
     unittest.main()
