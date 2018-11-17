@@ -120,8 +120,9 @@ class MqttPkt:
                 payload_len = payload_len + 2 + len(password)
         
         self.command = NC.CMD_CONNECT
-        self.remaining_length = 12 + payload_len
-    
+        self.remaining_length = 6 + payload_len + len(getattr(NC,
+            'PROTOCOL_NAME_{0}'.format(version)))
+
         rc = self.alloc()
         if rc != NC.ERR_SUCCESS:
             return rc
